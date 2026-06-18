@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Analysis — Project Tracker</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg: #f0f2f8; --card: #fff; --border: #e0e4f0; --text: #111827; --muted: #6b7280;
+  --accent: #4f46e5; --green: #16a34a; --green-light: #dcfce7; --red: #dc2626;
+  --red-light: #fee2e2; --amber: #d97706; --amber-light: #fef3c7; --blue: #2563eb;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+/* ── Config banner (shown until configured) ── */
+#config-banner {
+  background: #fef3c7; border-bottom: 2px solid #f59e0b;
+  padding: 14px 32px; font-size: 13px; display: flex; align-items: center; gap: 12px;
+}
+#config-banner strong { color: #92400e; }
+#config-banner code { background: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; border: 1px solid #fbbf24; }
+#config-banner a { color: var(--accent); font-weight: 600; }
+
+/* ── Loading / error ── */
+#loading-state { text-align: center; padding: 80px 32px; color: var(--muted); font-size: 16px; }
+#loading-state .spinner { width: 36px; height: 36px; border: 3px solid #e0e4f0; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Header ── */
+header {
+  background: var(--accent); padding: 0 32px;
+  display: flex; align-items: center; gap: 16px; height: 56px;
+  position: sticky; top: 0; z-index: 200;
+}
+header h1 { font-size: 17px; font-weight: 700; color: #fff; }
+header .date { color: rgba(255,255,255,.65); font-size: 12px; margin-left: 8px; }
+.add-btn { margin-left: auto; background: rgba(255,255,255,.2); color: #fff; border: 1.5px solid rgba(255,255,255,.4); border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; }
+.add-btn:hover { background: rgba(255,255,255,.3); }
+
+/* ── Summary bar ── */
+.summary-bar { background: #fff; border-bottom: 1px solid var(--border); padding: 0 32px; display: flex; gap: 0; }
+.sitem { padding: 14px 28px 14px 0; border-right: 1px solid var(--border); margin-right: 28px; display: flex; flex-direction: column; gap: 2px; }
+.sitem .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.sitem .val { font-size: 22px; font-weight: 800; }
+.sitem .sub { font-size: 11px; color: var(--muted); }
+.sitem.warn .val { color: var(--red); }
+
+/* ── Main ── */
+main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; flex-direction: column; gap: 10px; }
+.sec { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-top: 8px; margin-bottom: 2px; display: flex; align-items: center; gap: 10px; }
+.sec::after { content:''; flex:1; height:1px; background: var(--border); }
+
+/* ── Project card ── */
+.project-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; transition: box-shadow .15s; }
+.project-card:hover { box-shadow: 0 4px 16px rgba(79,70,229,.08); }
+.project-card.over-budget { border-color: #fca5a5; }
+.card-main { display: grid; grid-template-columns: 260px 1fr 200px; }
+.card-identity { padding: 16px 20px; border-right: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; background: #fafbff; }
+.pname { font-size: 14px; font-weight: 700; }
+.pteam { font-size: 12px; }
+.ppi   { font-size: 11.5px; color: var(--muted); }
+.meta-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 4px; }
+.card-visual { padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+.card-stats { padding: 14px 20px; border-left: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; justify-content: center; }
+.stat { display: flex; justify-content: space-between; align-items: center; }
+.stat .s-lbl { font-size: 11px; color: var(--muted); }
+.stat .s-val { font-size: 13px; font-weight: 700; }
+.stat .s-val.red { color: var(--red); } .stat .s-val.green { color: var(--green); } .stat .s-val.amber { color: var(--amber); }
+
+/* ── Badges ── */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+.b-done   { background: #dcfce7; color: #166534; } .b-inprog { background: #fef3c7; color: #92400e; }
+.b-todo   { background: #e2e8f0; color: #475569; } .b-over   { background: #fee2e2; color: #991b1b; }
+.b-track  { background: #dbeafe; color: #1e40af; } .b-behind { background: #fff7ed; color: #9a3412; }
+.b-po     { background: #f0fdf4; color: #166534; font-size: 10px; } .b-na { background: #f8fafc; color: #64748b; font-size: 10px; border: 1px solid #e2e8f0; }
+
+/* ── Hours bar ── */
+.hours-bar-labels { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.hl { font-weight: 700; font-size: 12px; } .hl.over { color: var(--red); } .hl.done-lbl { color: var(--green); }
+.bar-track { position: relative; height: 28px; border-radius: 7px; background: var(--green-light); border: 1.5px solid #bbf7d0; overflow: visible; display: flex; align-items: stretch; }
+.bar-fill { border-radius: 5px 0 0 5px; background: linear-gradient(90deg, #15803d, #22c55e); display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; min-width: 0; flex-shrink: 0; transition: width .5s ease; }
+.bar-fill.full-fill { border-radius: 5px; }
+.bar-fill-pct { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.9); white-space: nowrap; }
+.bar-overflow-ext { height: 28px; position: absolute; left: 100%; top: -1.5px; border-radius: 0 5px 5px 0; background: linear-gradient(90deg, #ef4444, #b91c1c); border: 1.5px solid #fca5a5; border-left: none; display: flex; align-items: center; padding: 0 7px; font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; }
+.bar-ticks { position: absolute; inset: 0; pointer-events: none; }
+.bar-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,.4); }
+.bar-sub { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* ── Calendar timeline ── */
+.timeline-wrap { display: flex; flex-direction: column; gap: 2px; }
+.timeline-lbl { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
+.timeline-track { position: relative; height: 8px; border-radius: 4px; background: #e5e7eb; }
+.timeline-progress { position: absolute; left: 0; top: 0; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), #818cf8); }
+.timeline-today { position: absolute; top: -3px; width: 3px; height: 14px; background: var(--red); border-radius: 2px; }
+.timeline-today-lbl { position: absolute; top: -16px; font-size: 9px; font-weight: 700; color: var(--red); transform: translateX(-50%); white-space: nowrap; }
+
+/* ── Actions / Log panel ── */
+.card-actions { border-top: 1px solid var(--border); background: #fafbff; padding: 8px 20px; display: flex; align-items: center; gap: 10px; }
+.log-toggle-btn { background: none; border: 1.5px solid var(--border); border-radius: 7px; padding: 5px 14px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--muted); transition: all .12s; }
+.log-toggle-btn:hover, .log-toggle-btn.active { border-color: var(--accent); color: var(--accent); background: #eef0ff; }
+.edit-btn { background: none; border: 1.5px solid var(--border); border-radius: 7px; padding: 5px 12px; font-size: 12px; cursor: pointer; color: var(--muted); }
+.edit-btn:hover { border-color: var(--muted); color: var(--text); }
+.log-panel { display: none; border-top: 1px solid var(--border); padding: 16px 20px; background: #fff; }
+.log-panel.open { display: block; }
+.log-table { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
+.log-table thead th { text-align: left; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 4px 10px; border-bottom: 1px solid var(--border); }
+.log-table tbody td { padding: 7px 10px; font-size: 12px; border-bottom: 1px solid #f3f4f6; }
+.log-table tbody tr:last-child td { border-bottom: none; }
+.log-table tbody tr.over-row td { background: #fff5f5; }
+.log-table tbody tr.over-row td:nth-child(2) { color: var(--red); font-weight: 700; }
+.cum-bar { height: 6px; border-radius: 3px; background: #e5e7eb; position: relative; display: inline-block; width: 80px; vertical-align: middle; }
+.cum-fill { height: 100%; border-radius: 3px; position: absolute; left:0; top:0; }
+.del-log { background: none; border: none; cursor: pointer; color: #d1d5db; font-size: 13px; padding: 2px 5px; border-radius: 4px; }
+.del-log:hover { color: var(--red); background: #fee2e2; }
+.add-log-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); }
+.add-log-row label { font-size: 11px; font-weight: 600; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
+.add-log-row input { border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 13px; font-family: inherit; background: #fff; }
+.add-log-row input[type=number] { width: 80px; } .add-log-row input[type=date] { width: 140px; } .add-log-row input[type=text] { width: 200px; }
+.add-log-row input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+.add-log-submit { background: var(--green); color: #fff; border: none; border-radius: 7px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; align-self: flex-end; }
+.add-log-submit:hover { background: #15803d; }
+.saving-indicator { font-size: 11px; color: var(--muted); margin-left: auto; display: none; }
+
+/* ── Modal ── */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(17,24,39,.45); z-index: 300; align-items: center; justify-content: center; }
+.overlay.open { display: flex; }
+.modal { background: var(--card); border-radius: 14px; padding: 28px; width: 500px; max-width: 96vw; box-shadow: 0 20px 60px rgba(0,0,0,.18); }
+.modal h3 { font-size: 17px; font-weight: 700; margin-bottom: 20px; }
+.field { margin-bottom: 14px; }
+.field label { font-size: 11px; font-weight: 700; color: var(--muted); display: block; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .05em; }
+.field input, .field select { width: 100%; border: 1.5px solid var(--border); border-radius: 8px; padding: 9px 12px; font-size: 14px; font-family: inherit; background: #fafbfc; }
+.field input:focus, .field select:focus { outline: none; border-color: var(--accent); background: #fff; }
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.modal-btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--border); }
+.modal-btns button { border-radius: 8px; padding: 9px 20px; font-size: 13px; font-weight: 600; cursor: pointer; border: none; }
+.btn-cancel { background: #f1f5f9; color: var(--text); } .btn-cancel:hover { background: #e2e8f0; }
+.btn-save   { background: var(--accent); color: #fff; }  .btn-save:hover { background: #4338ca; }
+.btn-delete { background: #fee2e2; color: var(--red); }  .btn-delete:hover { background: #fecaca; }
+</style>
+</head>
+<body>
+
+
+<div id="loading-state">
+  <div class="spinner"></div>
+  Connecting to database…
+</div>
+
+<div id="app" style="display:none;">
+  <header>
+    <svg width="22" height="22" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="16" y2="14"/><line x1="8" y1="18" x2="13" y2="18"/></svg>
+    <h1>Image Analysis — Project Tracker</h1>
+    <span class="date" id="today-lbl"></span>
+    <button class="add-btn" onclick="openAddModal()">+ Add Project</button>
+  </header>
+  <div class="summary-bar" id="summary-bar"></div>
+  <main id="main-cards">
+    <div class="sec">Projects</div>
+  </main>
+</div>
+
+<!-- Modal -->
+<div class="overlay" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Add Project</h3>
+    <div class="field"><label>Project Name</label><input type="text" id="m-name" placeholder="e.g. WGA Analysis Dev"/></div>
+    <div class="two-col">
+      <div class="field"><label>Team Member</label><input type="text" id="m-team"/></div>
+      <div class="field"><label>Researcher / PI</label><input type="text" id="m-pi"/></div>
+    </div>
+    <div class="two-col">
+      <div class="field"><label>Start Date</label><input type="date" id="m-start"/></div>
+      <div class="field"><label>Budget (hours total)</label><input type="number" id="m-budget" min="1" placeholder="40"/></div>
+    </div>
+    <div class="two-col">
+      <div class="field"><label>Hours / Week Target</label><input type="number" id="m-hpw" min="0.5" step="0.5" placeholder="4"/></div>
+      <div class="field"><label>Status</label>
+        <select id="m-status"><option>To Do</option><option>In Progress</option><option>Done</option></select>
+      </div>
+    </div>
+    <div class="field"><label>Payment State</label>
+      <select id="m-payment"><option>Quote NA</option><option>Purchase Order Received</option><option>Invoiced</option><option>Paid</option></select>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-delete" id="modal-del" style="display:none;margin-right:auto;" onclick="deleteProject()">Delete Project</button>
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// 🔧 CONFIGURE THESE TWO VALUES WITH YOUR SUPABASE CREDENTIALS
+// ============================================================
+const SUPABASE_URL  = 'https://yyaqudqtykzyurzpamgr.supabase.co';
+const SUPABASE_KEY  = 'sb_publishable_A0Plsj0wLNewDlKdw6n9QQ_TnhgPAPu';
+// ============================================================
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let projects = [];
+let editingId = null;
+
+// ── Init ──
+async function init() {
+  if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
+    document.getElementById('loading-state').innerHTML = `
+      <div style="font-size:15px;color:#92400e;">⚙️ Please set your Supabase credentials in index.html before using the app.<br>
+      <a href="https://supabase.com/dashboard" target="_blank" style="color:#4f46e5;">Open Supabase dashboard →</a></div>`;
+    return;
+  }
+  document.getElementById('config-banner').style.display = 'none';
+  try {
+    await loadData();
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('today-lbl').textContent = new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+    render();
+  } catch(e) {
+    document.getElementById('loading-state').innerHTML = `<div style="color:#dc2626;">Error connecting to database: ${e.message}</div>`;
+  }
+}
+
+async function loadData() {
+  const { data: projs, error: pe } = await db.from('projects').select('*').order('created_at');
+  if (pe) throw pe;
+  const { data: logs, error: le } = await db.from('hour_logs').select('*').order('log_date');
+  if (le) throw le;
+  projects = projs.map(p => ({
+    ...p,
+    logs: logs.filter(l => l.project_id === p.id)
+  }));
+}
+
+// ── Computed helpers ──
+function loggedHrs(p) { return (p.logs||[]).reduce((s,l)=>s+(l.hours||0),0); }
+function isOver(p) { return loggedHrs(p) > p.budget_hrs; }
+function projectedEnd(p) {
+  if (!p.start_date || !p.hrs_per_week || !p.budget_hrs) return null;
+  const weeks = p.budget_hrs / p.hrs_per_week;
+  const d = new Date(p.start_date);
+  d.setDate(d.getDate() + Math.round(weeks * 7));
+  return d;
+}
+function paceStatus(p) {
+  if (p.status !== 'In Progress') return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const start = new Date(p.start_date);
+  if (today < start) return null;
+  const weeksElapsed = (today - start) / (7*24*3600*1000);
+  const expected = weeksElapsed * p.hrs_per_week;
+  return loggedHrs(p) >= expected * 0.9 ? 'on-track' : 'behind';
+}
+
+// ── Render ──
+function render() { renderSummary(); renderCards(); }
+
+function renderSummary() {
+  const total = projects.length, done = projects.filter(p=>p.status==='Done').length;
+  const over = projects.filter(p=>isOver(p)).length;
+  const totBudget = projects.reduce((s,p)=>s+p.budget_hrs,0);
+  const totLogged = projects.reduce((s,p)=>s+loggedHrs(p),0);
+  const weeklyTgt = projects.filter(p=>p.status==='In Progress').reduce((s,p)=>s+(p.hrs_per_week||0),0);
+  document.getElementById('summary-bar').innerHTML = `
+    <div class="sitem"><div class="lbl">Projects</div><div class="val">${total}</div><div class="sub">${done} done · ${total-done} active</div></div>
+    <div class="sitem"><div class="lbl">Total Budget</div><div class="val">${totBudget}h</div></div>
+    <div class="sitem"><div class="lbl">Hours Logged</div><div class="val">${totLogged.toFixed(1)}h</div><div class="sub">${Math.round(totLogged/totBudget*100)}% of budget</div></div>
+    <div class="sitem"><div class="lbl">Weekly Target</div><div class="val">${weeklyTgt}h</div><div class="sub">active projects</div></div>
+    ${over ? `<div class="sitem warn"><div class="lbl">⚠ Over Budget</div><div class="val">${over}</div></div>` : ''}
+  `;
+}
+
+function renderCards() {
+  const main = document.getElementById('main-cards');
+  main.querySelectorAll('.project-card').forEach(el=>el.remove());
+  const maxBudget = Math.max(...projects.map(p=>p.budget_hrs), 1);
+  const BAR = 280;
+
+  projects.forEach(p => {
+    const lg = loggedHrs(p), over = isOver(p);
+    const pct = Math.min(lg / p.budget_hrs, 1) * 100;
+    const overPct = over ? ((lg - p.budget_hrs) / p.budget_hrs) * 100 : 0;
+    const pe = projectedEnd(p), pace = paceStatus(p);
+    const today = new Date(); today.setHours(0,0,0,0);
+    const startD = new Date(p.start_date);
+    const endD = pe || new Date(p.start_date);
+    const totalSpan = Math.max(endD - startD, 1);
+    const todayPct = Math.max(0, Math.min(100, ((today - startD) / totalSpan) * 100));
+    const elapsedPct = Math.max(0, Math.min(100, ((today - startD) / totalSpan) * 100));
+    const startStr = startD.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});
+    const endStr   = endD.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});
+
+    let statusBadge = over ? `<span class="badge b-over">Over Budget</span>`
+      : p.status==='Done' ? `<span class="badge b-done">Done</span>`
+      : p.status==='In Progress' ? `<span class="badge b-inprog">In Progress</span>`
+      : `<span class="badge b-todo">To Do</span>`;
+    let paceBadge = pace==='on-track' ? `<span class="badge b-track">On Track</span>` : pace==='behind' ? `<span class="badge b-behind">Behind</span>` : '';
+    let payBadge = p.payment==='Purchase Order Received' ? `<span class="badge b-po">PO Received</span>` : `<span class="badge b-na">${p.payment}</span>`;
+
+    const ticks = [25,50,75].map(t=>`<div class="bar-tick" style="left:${t}%;"></div>`).join('');
+    const daysLeft = pe ? Math.ceil((pe - today)/(1000*3600*24)) : null;
+    const daysLeftStr = daysLeft===null ? '—' : daysLeft<0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d left`;
+    const daysLeftClass = daysLeft!==null && daysLeft<0 ? 'red' : daysLeft!==null && daysLeft<14 ? 'amber' : '';
+    const remaining = Math.max(0, p.budget_hrs - lg).toFixed(1);
+
+    const logRows = [...(p.logs||[])].sort((a,b)=>b.log_date.localeCompare(a.log_date)).map(l => {
+      const cum = (p.logs||[]).filter(x=>x.log_date<=l.log_date).reduce((s,x)=>s+(x.hours||0),0);
+      const cumPct = Math.min(cum / p.budget_hrs, 1)*100;
+      const isOvr = cum > p.budget_hrs;
+      return `<tr class="${isOvr?'over-row':''}">
+        <td>${l.log_date}</td><td>${l.hours}h</td><td>${l.note||'—'}</td>
+        <td><span class="cum-bar"><span class="cum-fill" style="width:${cumPct}%;background:${isOvr?'#dc2626':'#22c55e'};"></span></span>
+          <span style="font-size:10px;color:var(--muted);margin-left:5px;">${cum.toFixed(1)}h</span></td>
+        <td><button class="del-log" onclick="deleteLog('${p.id}','${l.id}')">✕</button></td>
+      </tr>`;
+    }).join('');
+
+    const card = document.createElement('div');
+    card.className = `project-card${over?' over-budget':''}`;
+    card.id = `card-${p.id}`;
+    card.innerHTML = `
+      <div class="card-main">
+        <div class="card-identity">
+          <div class="pname">${p.name}</div>
+          <div class="pteam">${p.team||''}</div>
+          <div class="ppi">${p.pi||''}</div>
+          <div class="meta-row" style="margin-top:8px;">${statusBadge}${paceBadge}</div>
+          <div class="meta-row">${payBadge}</div>
+        </div>
+        <div class="card-visual">
+          <div>
+            <div class="hours-bar-labels">
+              <span class="hl${over?' over':lg===p.budget_hrs?' done-lbl':''}">${lg.toFixed(1)}h logged</span>
+              <span>${p.budget_hrs}h budget</span>
+            </div>
+            <div style="position:relative;">
+              <div class="bar-track">
+                <div class="bar-fill${pct>=100?' full-fill':''}" style="width:${pct}%;">
+                  ${pct>12?`<span class="bar-fill-pct">${Math.round(pct)}%</span>`:''}
+                </div>
+                <div class="bar-ticks">${ticks}</div>
+              </div>
+              ${over?`<div class="bar-overflow-ext" style="width:${overPct}%;">+${(lg-p.budget_hrs).toFixed(1)}h</div>`:''}
+            </div>
+            <div class="bar-sub">
+              <span>0h</span>
+              <span style="color:${over?'var(--red)':'var(--muted)'};">${over?lg.toFixed(1)+'h total':remaining+'h remaining'}</span>
+              <span>${p.budget_hrs}h</span>
+            </div>
+          </div>
+          <div class="timeline-wrap">
+            <div class="timeline-lbl"><span>📅 ${startStr}</span><span>${p.hrs_per_week}h/week target</span><span>🏁 ${endStr}</span></div>
+            <div class="timeline-track">
+              <div class="timeline-progress" style="width:${elapsedPct}%;"></div>
+              ${todayPct>=0&&todayPct<=100?`<div class="timeline-today" style="left:${todayPct}%;"><div class="timeline-today-lbl">Today</div></div>`:''}
+            </div>
+          </div>
+        </div>
+        <div class="card-stats">
+          <div class="stat"><span class="s-lbl">Logged</span><span class="s-val ${over?'red':''}">${lg.toFixed(1)} / ${p.budget_hrs}h</span></div>
+          <div class="stat"><span class="s-lbl">Remaining</span><span class="s-val ${over?'red':''}">${over?'−'+(lg-p.budget_hrs).toFixed(1)+'h':remaining+'h'}</span></div>
+          <div class="stat"><span class="s-lbl">Est. finish</span><span class="s-val ${daysLeftClass}">${daysLeftStr}</span></div>
+          <div class="stat"><span class="s-lbl">Log entries</span><span class="s-val">${(p.logs||[]).length}</span></div>
+        </div>
+      </div>
+      <div class="card-actions">
+        <button class="log-toggle-btn" id="log-btn-${p.id}" onclick="toggleLog('${p.id}')">＋ Log Hours <span style="font-size:11px;color:var(--muted);">(${(p.logs||[]).length} entries)</span></button>
+        <button class="edit-btn" onclick="openEditModal('${p.id}')">✎ Edit</button>
+        <span class="saving-indicator" id="saving-${p.id}">Saving…</span>
+      </div>
+      <div class="log-panel" id="log-panel-${p.id}">
+        <table class="log-table">
+          <thead><tr><th>Date</th><th>Hours</th><th>Note</th><th>Cumulative Progress</th><th></th></tr></thead>
+          <tbody>${logRows||`<tr><td colspan="5" style="color:var(--muted);font-size:12px;font-style:italic;padding:8px 10px;">No hours logged yet.</td></tr>`}</tbody>
+        </table>
+        <div class="add-log-row">
+          <label>Date<input type="date" id="li-date-${p.id}" value="${new Date().toISOString().split('T')[0]}"/></label>
+          <label>Hours<input type="number" id="li-hrs-${p.id}" min="0.5" step="0.5" placeholder="4"/></label>
+          <label>Note (optional)<input type="text" id="li-note-${p.id}" placeholder="What was done this week?"/></label>
+          <button class="add-log-submit" onclick="addLog('${p.id}')">Log Hours</button>
+        </div>
+      </div>
+    `;
+    main.appendChild(card);
+  });
+}
+
+// ── UI actions ──
+function toggleLog(id) {
+  document.getElementById(`log-panel-${id}`).classList.toggle('open');
+  document.getElementById(`log-btn-${id}`).classList.toggle('active');
+}
+function showSaving(id) { const el=document.getElementById(`saving-${id}`); if(el){el.style.display='inline';setTimeout(()=>{el.style.display='none';},1500);} }
+
+// ── Add hour log ──
+async function addLog(id) {
+  const date = document.getElementById(`li-date-${id}`).value;
+  const hrs  = parseFloat(document.getElementById(`li-hrs-${id}`).value);
+  const note = document.getElementById(`li-note-${id}`).value.trim();
+  if (!date || !hrs || hrs <= 0) { alert('Enter a valid date and hours.'); return; }
+  showSaving(id);
+  const { error } = await db.from('hour_logs').insert({ project_id: id, log_date: date, hours: hrs, note });
+  if (error) { alert('Error saving: ' + error.message); return; }
+  // auto-update status to In Progress if was To Do
+  const p = projects.find(x=>x.id===id);
+  if (p && p.status === 'To Do') {
+    await db.from('projects').update({ status: 'In Progress' }).eq('id', id);
+  }
+  await loadData(); render();
+  requestAnimationFrame(()=>{ document.getElementById(`log-panel-${id}`)?.classList.add('open'); document.getElementById(`log-btn-${id}`)?.classList.add('active'); });
+}
+
+// ── Delete log ──
+async function deleteLog(pid, lid) {
+  const { error } = await db.from('hour_logs').delete().eq('id', lid);
+  if (error) { alert('Error: ' + error.message); return; }
+  await loadData(); render();
+  requestAnimationFrame(()=>{ document.getElementById(`log-panel-${pid}`)?.classList.add('open'); document.getElementById(`log-btn-${pid}`)?.classList.add('active'); });
+}
+
+// ── Modal ──
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'Add Project';
+  ['m-name','m-team','m-pi'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('m-start').value = new Date().toISOString().split('T')[0];
+  document.getElementById('m-budget').value = 40;
+  document.getElementById('m-hpw').value = 4;
+  document.getElementById('m-status').value = 'To Do';
+  document.getElementById('m-payment').value = 'Quote NA';
+  document.getElementById('modal-del').style.display = 'none';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function openEditModal(id) {
+  editingId = id;
+  const p = projects.find(x=>x.id===id);
+  document.getElementById('modal-title').textContent = 'Edit Project';
+  document.getElementById('m-name').value   = p.name;
+  document.getElementById('m-team').value   = p.team||'';
+  document.getElementById('m-pi').value     = p.pi||'';
+  document.getElementById('m-start').value  = p.start_date;
+  document.getElementById('m-budget').value = p.budget_hrs;
+  document.getElementById('m-hpw').value    = p.hrs_per_week;
+  document.getElementById('m-status').value = p.status;
+  document.getElementById('m-payment').value= p.payment;
+  document.getElementById('modal-del').style.display = '';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+async function saveModal() {
+  const name = document.getElementById('m-name').value.trim();
+  if (!name) { alert('Project name required.'); return; }
+  const obj = { name, team: document.getElementById('m-team').value.trim(), pi: document.getElementById('m-pi').value.trim(),
+    start_date: document.getElementById('m-start').value, budget_hrs: parseFloat(document.getElementById('m-budget').value)||40,
+    hrs_per_week: parseFloat(document.getElementById('m-hpw').value)||2, status: document.getElementById('m-status').value,
+    payment: document.getElementById('m-payment').value };
+  if (editingId) await db.from('projects').update(obj).eq('id', editingId);
+  else await db.from('projects').insert(obj);
+  await loadData(); closeModal(); render();
+}
+async function deleteProject() {
+  if (!confirm('Delete this project and all its logged hours?')) return;
+  await db.from('projects').delete().eq('id', editingId);
+  await loadData(); closeModal(); render();
+}
+document.getElementById('modal-overlay').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeModal(); });
+
+init();
+</script>
+</body>
+</html>
