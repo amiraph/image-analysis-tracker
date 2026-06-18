@@ -168,9 +168,10 @@ main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; fle
     <h3 id="modal-title">Add Project</h3>
     <div class="field"><label>Project Name</label><input type="text" id="m-name" placeholder="e.g. WGA Analysis Dev"/></div>
     <div class="two-col">
-      <div class="field"><label>Team Member</label><input type="text" id="m-team"/></div>
       <div class="field"><label>Researcher / PI</label><input type="text" id="m-pi"/></div>
+      <div class="field"><label>Team Member</label><input type="text" id="m-team-member"/></div>
     </div>
+    <div class="field"><label>Student</label><input type="text" id="m-team" placeholder="Student name"/></div>
     <div class="two-col">
       <div class="field"><label>Start Date</label><input type="date" id="m-start"/></div>
       <div class="field"><label>Budget (hours total)</label><input type="number" id="m-budget" min="1" placeholder="40"/></div>
@@ -216,7 +217,7 @@ async function init() {
       <a href="https://supabase.com/dashboard" target="_blank" style="color:#4f46e5;">Open Supabase dashboard →</a></div>`;
     return;
   }
-  document.getElementById('config-banner').style.display = 'none';
+  document.getElementById('config-banner') && (document.getElementById('config-banner').style.display = 'none');
   try {
     await loadData();
     document.getElementById('loading-state').style.display = 'none';
@@ -338,8 +339,12 @@ function renderCards() {
       <div class="card-main">
         <div class="card-identity">
           <div class="pname">${p.name}</div>
+          <div class="ppi" style="font-size:11px;color:var(--muted);margin-bottom:1px;">Researcher / PI</div>
+          <div class="pteam">${p.pi||''}</div>
+          <div class="ppi" style="font-size:11px;color:var(--muted);margin-top:5px;margin-bottom:1px;">Team Member</div>
+          <div class="pteam">${p.team_member||'—'}</div>
+          <div class="ppi" style="font-size:11px;color:var(--muted);margin-top:5px;margin-bottom:1px;">Student</div>
           <div class="pteam">${p.team||''}</div>
-          <div class="ppi">${p.pi||''}</div>
           <div class="meta-row" style="margin-top:8px;">${statusBadge}${paceBadge}</div>
           <div class="meta-row">${payBadge}</div>
         </div>
@@ -438,7 +443,7 @@ async function deleteLog(pid, lid) {
 function openAddModal() {
   editingId = null;
   document.getElementById('modal-title').textContent = 'Add Project';
-  ['m-name','m-team','m-pi'].forEach(id=>document.getElementById(id).value='');
+  ['m-name','m-team','m-pi','m-team-member'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('m-start').value = new Date().toISOString().split('T')[0];
   document.getElementById('m-budget').value = 40;
   document.getElementById('m-hpw').value = 4;
@@ -451,9 +456,10 @@ function openEditModal(id) {
   editingId = id;
   const p = projects.find(x=>x.id===id);
   document.getElementById('modal-title').textContent = 'Edit Project';
-  document.getElementById('m-name').value   = p.name;
-  document.getElementById('m-team').value   = p.team||'';
-  document.getElementById('m-pi').value     = p.pi||'';
+  document.getElementById('m-name').value        = p.name;
+  document.getElementById('m-pi').value          = p.pi||'';
+  document.getElementById('m-team-member').value = p.team_member||'';
+  document.getElementById('m-team').value        = p.team||'';
   document.getElementById('m-start').value  = p.start_date;
   document.getElementById('m-budget').value = p.budget_hrs;
   document.getElementById('m-hpw').value    = p.hrs_per_week;
@@ -466,7 +472,7 @@ function closeModal() { document.getElementById('modal-overlay').classList.remov
 async function saveModal() {
   const name = document.getElementById('m-name').value.trim();
   if (!name) { alert('Project name required.'); return; }
-  const obj = { name, team: document.getElementById('m-team').value.trim(), pi: document.getElementById('m-pi').value.trim(),
+  const obj = { name, pi: document.getElementById('m-pi').value.trim(), team_member: document.getElementById('m-team-member').value.trim(), team: document.getElementById('m-team').value.trim(),
     start_date: document.getElementById('m-start').value, budget_hrs: parseFloat(document.getElementById('m-budget').value)||40,
     hrs_per_week: parseFloat(document.getElementById('m-hpw').value)||2, status: document.getElementById('m-status').value,
     payment: document.getElementById('m-payment').value };
