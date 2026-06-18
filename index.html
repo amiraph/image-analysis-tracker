@@ -79,22 +79,23 @@ main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; fle
 /* ── Hours bar ── */
 .hours-bar-labels { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
 .hl { font-weight: 700; font-size: 12px; } .hl.over { color: var(--red); } .hl.done-lbl { color: var(--green); }
-.bar-track { position: relative; height: 28px; border-radius: 7px; background: var(--green-light); border: 1.5px solid #bbf7d0; overflow: visible; display: flex; align-items: stretch; }
+.bar-track { position: relative; height: 28px; border-radius: 7px; background: var(--green-light); border: 1.5px solid #bbf7d0; overflow: hidden; display: flex; align-items: stretch; }
+.bar-track.over { background: #fee2e2; border-color: #fca5a5; }
 .bar-fill { border-radius: 5px 0 0 5px; background: linear-gradient(90deg, #15803d, #22c55e); display: flex; align-items: center; justify-content: flex-end; padding-right: 6px; min-width: 0; flex-shrink: 0; transition: width .5s ease; }
-.bar-fill.full-fill { border-radius: 5px; }
+.bar-fill.full-fill { border-radius: 0; }
 .bar-fill-pct { font-size: 11px; font-weight: 700; color: rgba(255,255,255,.9); white-space: nowrap; }
-.bar-overflow-ext { height: 28px; position: absolute; left: 100%; top: -1.5px; border-radius: 0 5px 5px 0; background: linear-gradient(90deg, #ef4444, #b91c1c); border: 1.5px solid #fca5a5; border-left: none; display: flex; align-items: center; padding: 0 7px; font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; }
+.bar-overflow-seg { flex-shrink: 0; background: linear-gradient(90deg, #ef4444, #b91c1c); display: flex; align-items: center; justify-content: center; padding: 0 6px; font-size: 11px; font-weight: 700; color: #fff; white-space: nowrap; border-radius: 0 5px 5px 0; overflow: hidden; }
 .bar-ticks { position: absolute; inset: 0; pointer-events: none; }
 .bar-tick { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255,255,255,.4); }
 .bar-sub { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 2px; }
 
 /* ── Calendar timeline ── */
-.timeline-wrap { display: flex; flex-direction: column; gap: 2px; }
+.timeline-wrap { display: flex; flex-direction: column; gap: 2px; padding-bottom: 14px; }
 .timeline-lbl { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
 .timeline-track { position: relative; height: 8px; border-radius: 4px; background: #e5e7eb; }
 .timeline-progress { position: absolute; left: 0; top: 0; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), #818cf8); }
-.timeline-today { position: absolute; top: -3px; width: 3px; height: 14px; background: var(--red); border-radius: 2px; }
-.timeline-today-lbl { position: absolute; top: -16px; font-size: 9px; font-weight: 700; color: var(--red); transform: translateX(-50%); white-space: nowrap; }
+.timeline-today { position: absolute; top: -2px; width: 2px; height: 12px; background: var(--red); border-radius: 2px; }
+.timeline-today-lbl { position: absolute; top: 14px; font-size: 9px; font-weight: 700; color: var(--red); transform: translateX(-50%); white-space: nowrap; }
 
 /* ── Actions / Log panel ── */
 .card-actions { border-top: 1px solid var(--border); background: #fafbff; padding: 8px 20px; display: flex; align-items: center; gap: 10px; }
@@ -301,6 +302,15 @@ function renderCards() {
     let paceBadge = pace==='on-track' ? `<span class="badge b-track">On Track</span>` : pace==='behind' ? `<span class="badge b-behind">Behind</span>` : '';
     let payBadge = p.payment==='Purchase Order Received' ? `<span class="badge b-po">PO Received</span>` : `<span class="badge b-na">${p.payment}</span>`;
 
+    // Bar segments: green = budget portion, red = overflow portion (both inline, no overflow)
+    let greenBarPct, redBarPct;
+    if (over) {
+      greenBarPct = (p.budget_hrs / lg) * 100;
+      redBarPct   = ((lg - p.budget_hrs) / lg) * 100;
+    } else {
+      greenBarPct = pct;
+      redBarPct   = 0;
+    }
     const ticks = [25,50,75].map(t=>`<div class="bar-tick" style="left:${t}%;"></div>`).join('');
     const daysLeft = pe ? Math.ceil((pe - today)/(1000*3600*24)) : null;
     const daysLeftStr = daysLeft===null ? '—' : daysLeft<0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d left`;
@@ -338,13 +348,13 @@ function renderCards() {
               <span>${p.budget_hrs}h budget</span>
             </div>
             <div style="position:relative;">
-              <div class="bar-track">
-                <div class="bar-fill${pct>=100?' full-fill':''}" style="width:${pct}%;">
-                  ${pct>12?`<span class="bar-fill-pct">${Math.round(pct)}%</span>`:''}
+              <div class="bar-track${over?' over':''}">
+                <div class="bar-fill${over?' full-fill':pct>=100?' full-fill':''}" style="width:${greenBarPct}%;">
+                  ${greenBarPct>12?`<span class="bar-fill-pct">${over?Math.round(p.budget_hrs/lg*100):Math.round(pct)}%</span>`:''}
                 </div>
+                ${over?`<div class="bar-overflow-seg" style="width:${redBarPct}%;">+${(lg-p.budget_hrs).toFixed(1)}h</div>`:''}
                 <div class="bar-ticks">${ticks}</div>
               </div>
-              ${over?`<div class="bar-overflow-ext" style="width:${overPct}%;">+${(lg-p.budget_hrs).toFixed(1)}h</div>`:''}
             </div>
             <div class="bar-sub">
               <span>0h</span>
