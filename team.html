@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -160,6 +160,13 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
 
 let projects = [];
 let currentPeriod = 'month';
+
+// ── Date formatter ──
+function fmtDate(dateStr) {
+  if (!dateStr) return '—';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+}
 
 // ── Date helpers ──
 function todayDate() { const d = new Date(); d.setHours(0,0,0,0); return d; }

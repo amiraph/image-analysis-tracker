@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -252,6 +252,13 @@ async function loadData() {
     logs: logs.filter(l => l.project_id === p.id),
     waiting_periods: (waits || []).filter(w => w.project_id === p.id)
   }));
+}
+
+// ── Date formatter ──
+function fmtDate(dateStr) {
+  if (!dateStr) return '—';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
 }
 
 // ── Computed helpers ──
@@ -522,7 +529,7 @@ function renderCards() {
       const cumPct = Math.min(cum / p.budget_hrs, 1) * 100;
       const isOvr  = cum > p.budget_hrs;
       return `<tr class="${isOvr?'over-row':''}">
-        <td>${l.log_date}</td><td>${l.hours}h</td><td>${l.note||'—'}</td>
+        <td>${fmtDate(l.log_date)}</td><td>${l.hours}h</td><td>${l.note||'—'}</td>
         <td><span class="cum-bar"><span class="cum-fill" style="width:${cumPct}%;background:${isOvr?'#dc2626':'#22c55e'};"></span></span>
           <span style="font-size:10px;color:var(--muted);margin-left:5px;">${cum.toFixed(1)}h</span></td>
         <td><button class="del-log" onclick="deleteLog('${p.id}','${l.id}')">✕</button></td>
