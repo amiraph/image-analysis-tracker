@@ -14,15 +14,6 @@
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
 
-/* ── Config banner (shown until configured) ── */
-#config-banner {
-  background: #fef3c7; border-bottom: 2px solid #f59e0b;
-  padding: 14px 32px; font-size: 13px; display: flex; align-items: center; gap: 12px;
-}
-#config-banner strong { color: #92400e; }
-#config-banner code { background: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; border: 1px solid #fbbf24; }
-#config-banner a { color: var(--accent); font-weight: 600; }
-
 /* ── Loading / error ── */
 #loading-state { text-align: center; padding: 80px 32px; color: var(--muted); font-size: 16px; }
 #loading-state .spinner { width: 36px; height: 36px; border: 3px solid #e0e4f0; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
@@ -71,13 +62,17 @@ main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; fle
 
 /* ── Badges ── */
 .badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 9px; border-radius: 99px; font-size: 11px; font-weight: 600; }
-.b-done   { background: #dcfce7; color: #166534; } .b-inprog { background: #fef3c7; color: #92400e; }
-.b-todo   { background: #e2e8f0; color: #475569; } .b-over   { background: #fee2e2; color: #991b1b; }
-.b-track  { background: #dbeafe; color: #1e40af; } .b-behind { background: #fff7ed; color: #9a3412; }
+.b-done    { background: #dcfce7; color: #166534; }
+.b-inprog  { background: #fef3c7; color: #92400e; }
+.b-todo    { background: #e2e8f0; color: #475569; }
+.b-over    { background: #fee2e2; color: #991b1b; }
+.b-track   { background: #dbeafe; color: #1e40af; }
+.b-behind  { background: #fff7ed; color: #9a3412; }
 .b-waiting { background: #f5f3ff; color: #6d28d9; }
-.b-po     { background: #f0fdf4; color: #166534; font-size: 10px; } .b-na { background: #f8fafc; color: #64748b; font-size: 10px; border: 1px solid #e2e8f0; }
+.b-po      { background: #f0fdf4; color: #166534; font-size: 10px; }
+.b-na      { background: #f8fafc; color: #64748b; font-size: 10px; border: 1px solid #e2e8f0; }
 
-/* ── Hours bar ── */
+/* ── Hours budget bar ── */
 .hours-bar-labels { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
 .hl { font-weight: 700; font-size: 12px; } .hl.over { color: var(--red); } .hl.done-lbl { color: var(--green); }
 .bar-track { position: relative; height: 28px; border-radius: 7px; background: var(--green-light); border: 1.5px solid #bbf7d0; overflow: hidden; display: flex; align-items: stretch; }
@@ -91,7 +86,7 @@ main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; fle
 .bar-sub { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 2px; }
 
 /* ── Weekly bars ── */
-.weekly-section { margin-top: 10px; }
+.weekly-section { margin-top: 4px; }
 .weekly-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
 .weekly-bars { display: flex; gap: 5px; align-items: flex-end; overflow-x: auto; padding-bottom: 2px; position: relative; }
 .week-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex-shrink: 0; cursor: default; }
@@ -103,13 +98,14 @@ main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; fle
 .week-col.current-week .week-lbl { color: var(--accent); font-weight: 700; }
 .target-line { position: absolute; left: 0; right: 0; border-top: 1.5px dashed #d1d5db; pointer-events: none; }
 
-/* ── Calendar timeline ── */
-.timeline-wrap { display: flex; flex-direction: column; gap: 2px; padding-bottom: 14px; }
-.timeline-lbl { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
-.timeline-track { position: relative; height: 8px; border-radius: 4px; background: #e5e7eb; }
-.timeline-progress { position: absolute; left: 0; top: 0; height: 100%; border-radius: 4px; background: linear-gradient(90deg, var(--accent), #818cf8); }
-.timeline-today { position: absolute; top: -2px; width: 2px; height: 12px; background: var(--red); border-radius: 2px; }
-.timeline-today-lbl { position: absolute; top: 14px; font-size: 9px; font-weight: 700; color: var(--red); transform: translateX(-50%); white-space: nowrap; }
+/* ── Lifespan timeline ── */
+.lifespan-wrap { display: flex; flex-direction: column; gap: 4px; }
+.lifespan-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); }
+.lifespan-center { font-size: 10px; color: var(--muted); text-align: center; }
+.lifespan-bar-outer { position: relative; height: 10px; margin-bottom: 16px; }
+.lifespan-bar-track { position: absolute; inset: 0; border-radius: 5px; overflow: hidden; background: #e5e7eb; }
+.lifespan-today-marker { position: absolute; top: -3px; width: 2px; height: 16px; background: var(--red); border-radius: 2px; z-index: 2; }
+.lifespan-today-lbl { position: absolute; top: 16px; font-size: 9px; font-weight: 700; color: var(--red); transform: translateX(-50%); white-space: nowrap; }
 
 /* ── Actions / Log panel ── */
 .card-actions { border-top: 1px solid var(--border); background: #fafbff; padding: 8px 20px; display: flex; align-items: center; gap: 10px; }
@@ -157,7 +153,6 @@ main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; fle
 </head>
 <body>
 
-
 <div id="loading-state">
   <div class="spinner"></div>
   Connecting to database…
@@ -188,15 +183,20 @@ main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; fle
     <div class="field"><label>Student</label><input type="text" id="m-team" placeholder="Student name"/></div>
     <div class="two-col">
       <div class="field"><label>Start Date</label><input type="date" id="m-start"/></div>
-      <div class="field"><label>Budget (hours total)</label><input type="number" id="m-budget" min="1" placeholder="40"/></div>
+      <div class="field"><label>Deadline</label><input type="date" id="m-deadline"/></div>
     </div>
     <div class="two-col">
-      <div class="field"><label>Hours / Week Target</label><input type="number" id="m-hpw" min="0.5" step="0.5" placeholder="4"/></div>
+      <div class="field"><label>Budget (hours total)</label><input type="number" id="m-budget" min="1" placeholder="40"/></div>
       <div class="field"><label>Status</label>
-        <select id="m-status" onchange="toggleWaitingField()"><option>To Do</option><option>In Progress</option><option>Waiting</option><option>Done</option></select>
+        <select id="m-status" onchange="toggleWaitingField()">
+          <option>To Do</option><option>In Progress</option><option>Waiting</option><option>Done</option>
+        </select>
       </div>
     </div>
-    <div class="field" id="waiting-field" style="display:none;"><label>Waiting for</label><input type="text" id="m-waiting-for" placeholder="e.g. new images from student"/></div>
+    <div class="field" id="waiting-field" style="display:none;">
+      <label>Waiting for</label>
+      <input type="text" id="m-waiting-for" placeholder="e.g. new images from student"/>
+    </div>
     <div class="field"><label>Payment State</label>
       <select id="m-payment"><option>Quote NA</option><option>Purchase Order Received</option><option>Invoiced</option><option>Paid</option></select>
     </div>
@@ -209,12 +209,8 @@ main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; fle
 </div>
 
 <script>
-// ============================================================
-// 🔧 CONFIGURE THESE TWO VALUES WITH YOUR SUPABASE CREDENTIALS
-// ============================================================
-const SUPABASE_URL  = 'https://yyaqudqtykzyurzpamgr.supabase.co';
-const SUPABASE_KEY  = 'sb_publishable_A0Plsj0wLNewDlKdw6n9QQ_TnhgPAPu';
-// ============================================================
+const SUPABASE_URL = 'https://yyaqudqtykzyurzpamgr.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_A0Plsj0wLNewDlKdw6n9QQ_TnhgPAPu';
 
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -226,13 +222,6 @@ let editingId = null;
 
 // ── Init ──
 async function init() {
-  if (SUPABASE_URL === 'YOUR_SUPABASE_URL') {
-    document.getElementById('loading-state').innerHTML = `
-      <div style="font-size:15px;color:#92400e;">⚙️ Please set your Supabase credentials in index.html before using the app.<br>
-      <a href="https://supabase.com/dashboard" target="_blank" style="color:#4f46e5;">Open Supabase dashboard →</a></div>`;
-    return;
-  }
-  document.getElementById('config-banner') && (document.getElementById('config-banner').style.display = 'none');
   try {
     await loadData();
     document.getElementById('loading-state').style.display = 'none';
@@ -245,38 +234,147 @@ async function init() {
 }
 
 async function loadData() {
-  const { data: projs, error: pe } = await db.from('projects').select('*').order('created_at');
+  const [{ data: projs, error: pe }, { data: logs, error: le }, { data: waits, error: we }] = await Promise.all([
+    db.from('projects').select('*').order('created_at'),
+    db.from('hour_logs').select('*').order('log_date'),
+    db.from('waiting_periods').select('*').order('start_date')
+  ]);
   if (pe) throw pe;
-  const { data: logs, error: le } = await db.from('hour_logs').select('*').order('log_date');
   if (le) throw le;
+  if (we) throw we;
   projects = projs.map(p => ({
     ...p,
-    logs: logs.filter(l => l.project_id === p.id)
+    logs: logs.filter(l => l.project_id === p.id),
+    waiting_periods: (waits || []).filter(w => w.project_id === p.id)
   }));
 }
 
 // ── Computed helpers ──
-function loggedHrs(p) { return (p.logs||[]).reduce((s,l)=>s+(l.hours||0),0); }
-function isOver(p) { return loggedHrs(p) > p.budget_hrs; }
-function projectedEnd(p) {
-  if (!p.start_date || !p.hrs_per_week || !p.budget_hrs) return null;
-  const weeks = p.budget_hrs / p.hrs_per_week;
-  const d = new Date(p.start_date);
-  d.setDate(d.getDate() + Math.round(weeks * 7));
-  return d;
+function loggedHrs(p) { return (p.logs||[]).reduce((s,l) => s + (l.hours||0), 0); }
+function isOver(p)    { return loggedHrs(p) > p.budget_hrs; }
+
+function totalWaitingDays(p) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  return (p.waiting_periods || []).reduce((total, w) => {
+    const ws = new Date(w.start_date);
+    const we = w.end_date ? new Date(w.end_date) : today;
+    return total + Math.max(0, (we - ws) / (1000*3600*24));
+  }, 0);
 }
+
 function paceStatus(p) {
   if (p.status === 'Waiting') return 'waiting';
   if (p.status !== 'In Progress') return null;
+  if (!p.start_date || !p.deadline) return null;
   const today = new Date(); today.setHours(0,0,0,0);
-  const start = new Date(p.start_date);
+  const start    = new Date(p.start_date);
+  const deadline = new Date(p.deadline);
   if (today < start) return null;
-  const weeksElapsed = (today - start) / (7*24*3600*1000);
-  const expected = weeksElapsed * p.hrs_per_week;
-  return loggedHrs(p) >= expected * 0.9 ? 'on-track' : 'behind';
+  const calendarElapsed  = (today - start) / (1000*3600*24);
+  const waitDays         = totalWaitingDays(p);
+  const effectiveElapsed = Math.max(0, calendarElapsed - waitDays);
+  const totalDays        = Math.max(1, (deadline - start) / (1000*3600*24));
+  const expectedHrs      = (effectiveElapsed / totalDays) * p.budget_hrs;
+  return loggedHrs(p) >= expectedHrs * 0.9 ? 'on-track' : 'behind';
 }
 
-// ── Weekly bars helper ──
+// ── Lifespan timeline bar ──
+function lifespanBarHTML(p) {
+  if (!p.start_date || !p.deadline) return '';
+  const today    = new Date(); today.setHours(0,0,0,0);
+  const start    = new Date(p.start_date);
+  const deadline = new Date(p.deadline);
+
+  // Extend bar if today is past deadline
+  const barEnd   = today > deadline ? today : deadline;
+  const totalMs  = Math.max(barEnd - start, 1);
+
+  function toPct(d) { return Math.max(0, Math.min(100, (d - start) / totalMs * 100)); }
+
+  // Build segments
+  const waits = (p.waiting_periods || [])
+    .map(w => ({ s: new Date(w.start_date), e: w.end_date ? new Date(w.end_date) : today }))
+    .sort((a,b) => a.s - b.s);
+
+  const segments = [];
+  let cursor = start;
+
+  waits.forEach(w => {
+    if (w.s > cursor) segments.push({ type: 'active',  s: cursor, e: w.s });
+    segments.push(     { type: 'waiting', s: w.s,    e: w.e });
+    cursor = w.e;
+  });
+
+  // Active portion up to today (or deadline if past)
+  const activeEnd = today < deadline ? today : deadline;
+  if (cursor < activeEnd) segments.push({ type: 'active', s: cursor, e: activeEnd });
+
+  // Future (today → deadline)
+  if (today < deadline) segments.push({ type: 'future', s: today, e: deadline });
+
+  // Overdue (deadline → today)
+  if (today > deadline) segments.push({ type: 'overdue', s: deadline, e: today });
+
+  const segColors = {
+    active:  'background: linear-gradient(90deg,#4f46e5,#818cf8);',
+    waiting: 'background: repeating-linear-gradient(45deg,#c4b5fd,#c4b5fd 4px,#ede9fe 4px,#ede9fe 8px);',
+    future:  'background: #e5e7eb;',
+    overdue: 'background: linear-gradient(90deg,#ef4444,#b91c1c);'
+  };
+
+  const segDivs = segments.map(s => {
+    const l = toPct(s.s), w = toPct(s.e) - l;
+    if (w <= 0) return '';
+    return `<div style="position:absolute;left:${l.toFixed(2)}%;width:${w.toFixed(2)}%;top:0;bottom:0;${segColors[s.type]}"></div>`;
+  }).join('');
+
+  // Today marker
+  const todayPct = toPct(today);
+  const todayMarker = `
+    <div class="lifespan-today-marker" style="left:${todayPct.toFixed(2)}%;">
+      <div class="lifespan-today-lbl">Today</div>
+    </div>`;
+
+  // Day counters
+  const calDays     = Math.round((today - start) / (1000*3600*24));
+  const totalDays   = Math.round((deadline - start) / (1000*3600*24));
+  const waitDays    = Math.round(totalWaitingDays(p));
+  const effectiveDays = Math.max(0, calDays - waitDays);
+  const startStr    = start.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});
+  const deadlineStr = deadline.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});
+
+  let centerLabel = '';
+  if (calDays <= 0) {
+    centerLabel = `Starts in ${Math.abs(calDays)}d`;
+  } else if (today > deadline) {
+    centerLabel = `⚠ ${Math.round((today - deadline)/(1000*3600*24))}d past deadline`;
+  } else {
+    centerLabel = `Day ${effectiveDays} of ${totalDays}d${waitDays > 0 ? ` · ⏳ ${waitDays}d waiting` : ''}`;
+  }
+
+  // Legend
+  const hasWaiting = waitDays > 0;
+  const legend = `<div style="display:flex;gap:12px;font-size:9px;color:var(--muted);margin-top:2px;align-items:center;">
+    <span style="display:flex;align-items:center;gap:3px;"><span style="display:inline-block;width:10px;height:6px;border-radius:2px;background:linear-gradient(90deg,#4f46e5,#818cf8);"></span>Active</span>
+    ${hasWaiting ? `<span style="display:flex;align-items:center;gap:3px;"><span style="display:inline-block;width:10px;height:6px;border-radius:2px;background:repeating-linear-gradient(45deg,#c4b5fd,#c4b5fd 3px,#ede9fe 3px,#ede9fe 6px);"></span>Waiting</span>` : ''}
+    <span style="display:flex;align-items:center;gap:3px;"><span style="display:inline-block;width:10px;height:6px;border-radius:2px;background:#e5e7eb;"></span>Remaining</span>
+  </div>`;
+
+  return `<div class="lifespan-wrap">
+    <div class="lifespan-labels">
+      <span>📅 ${startStr}</span>
+      <span class="lifespan-center">${centerLabel}</span>
+      <span>🏁 ${deadlineStr}</span>
+    </div>
+    <div class="lifespan-bar-outer">
+      <div class="lifespan-bar-track">${segDivs}</div>
+      ${todayMarker}
+    </div>
+    ${legend}
+  </div>`;
+}
+
+// ── Weekly bars ──
 function weeklyBarsHTML(p) {
   const logs = p.logs || [];
   if (!p.start_date) return '';
@@ -284,51 +382,48 @@ function weeklyBarsHTML(p) {
   function weekStart(d) {
     const date = new Date(d); date.setHours(0,0,0,0);
     const day = date.getDay();
-    date.setDate(date.getDate() - (day === 0 ? 6 : day - 1)); // Monday
+    date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
     return date;
   }
 
   const today = new Date(); today.setHours(0,0,0,0);
   const thisWeekMs = weekStart(today).getTime();
-  const startWeek = weekStart(new Date(p.start_date));
+  const startWeek  = weekStart(new Date(p.start_date));
 
-  // Build list of weeks from project start to today
   const weeks = [];
   const cur = new Date(startWeek);
-  while (cur <= today) {
-    weeks.push(new Date(cur));
-    cur.setDate(cur.getDate() + 7);
-  }
+  while (cur <= today) { weeks.push(new Date(cur)); cur.setDate(cur.getDate() + 7); }
   if (weeks.length === 0) return '';
 
-  // Group logged hours by week
   const weekMap = {};
   logs.forEach(l => {
     const ws = weekStart(new Date(l.log_date)).getTime();
     weekMap[ws] = (weekMap[ws] || 0) + (l.hours || 0);
   });
 
-  // Scale: max bar height 40px, scaled against max weekly hours or hpw target
-  const maxHrs = Math.max(...weeks.map(w => weekMap[w.getTime()] || 0), p.hrs_per_week || 1);
+  // Implied weekly target from deadline
+  let impliedHpw = null;
+  if (p.deadline && p.start_date && p.budget_hrs) {
+    const totalWeeks = Math.max(1, (new Date(p.deadline) - new Date(p.start_date)) / (7*24*3600*1000));
+    impliedHpw = p.budget_hrs / totalWeeks;
+  }
+
+  const maxHrs = Math.max(...weeks.map(w => weekMap[w.getTime()] || 0), impliedHpw || 1);
   const BAR_MAX = 40;
-  const targetLineTop = BAR_MAX - Math.round((p.hrs_per_week / maxHrs) * BAR_MAX);
+  const targetLineTop = impliedHpw ? BAR_MAX - Math.round((impliedHpw / maxHrs) * BAR_MAX) : null;
 
-  // Show max last 20 weeks
   const display = weeks.slice(-20);
-
   const cols = display.map(w => {
-    const wt = w.getTime();
-    const hrs = weekMap[wt] || 0;
+    const wt   = w.getTime();
+    const hrs  = weekMap[wt] || 0;
     const barH = hrs > 0 ? Math.max(3, Math.round((hrs / maxHrs) * BAR_MAX)) : 0;
     const isCurrent = wt === thisWeekMs;
-    const isOver = hrs > p.hrs_per_week;
     const barColor = hrs === 0 ? '#e5e7eb'
-      : isOver ? '#16a34a'
-      : hrs >= p.hrs_per_week * 0.7 ? '#86efac'
-      : '#fde68a'; // amber-ish if low
+      : impliedHpw && hrs >= impliedHpw ? '#16a34a'
+      : impliedHpw && hrs >= impliedHpw * 0.7 ? '#86efac'
+      : '#fde68a';
     const dateStr = w.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
     const [day, mon] = dateStr.split(' ');
-
     return `<div class="week-col${isCurrent?' current-week':''}" title="${dateStr}: ${hrs ? hrs+'h logged' : 'no hours logged'}${isCurrent?' (this week)':''}">
       <div class="week-hrs">${hrs > 0 ? hrs+'h' : ''}</div>
       <div class="week-bar-track">
@@ -338,10 +433,11 @@ function weeklyBarsHTML(p) {
     </div>`;
   }).join('');
 
+  const targetLabel = impliedHpw ? `— - - avg target: ${impliedHpw.toFixed(1)}h/wk` : '';
   return `<div class="weekly-section">
-    <div class="weekly-title">Hours per week <span style="font-weight:400;color:#9ca3af;">— - - target: ${p.hrs_per_week}h/wk</span></div>
+    <div class="weekly-title">Hours per week <span style="font-weight:400;color:#9ca3af;">${targetLabel}</span></div>
     <div class="weekly-bars" style="position:relative;">
-      <div class="target-line" style="top:${targetLineTop}px;" title="${p.hrs_per_week}h/week target"></div>
+      ${targetLineTop !== null ? `<div class="target-line" style="top:${targetLineTop}px;"></div>` : ''}
       ${cols}
     </div>
   </div>`;
@@ -351,52 +447,35 @@ function weeklyBarsHTML(p) {
 function render() { renderSummary(); renderCards(); }
 
 function renderSummary() {
-  const total = projects.length, done = projects.filter(p=>p.status==='Done').length;
-  const over = projects.filter(p=>isOver(p)).length;
-  const totBudget = projects.reduce((s,p)=>s+p.budget_hrs,0);
-  const totLogged = projects.reduce((s,p)=>s+loggedHrs(p),0);
-  const weeklyTgt = projects.filter(p=>p.status==='In Progress').reduce((s,p)=>s+(p.hrs_per_week||0),0);
+  const total    = projects.length;
+  const done     = projects.filter(p => p.status === 'Done').length;
+  const waiting  = projects.filter(p => p.status === 'Waiting').length;
+  const over     = projects.filter(p => isOver(p)).length;
+  const totBudget = projects.reduce((s,p) => s + p.budget_hrs, 0);
+  const totLogged = projects.reduce((s,p) => s + loggedHrs(p), 0);
+  const behind   = projects.filter(p => paceStatus(p) === 'behind').length;
+
   document.getElementById('summary-bar').innerHTML = `
     <div class="sitem"><div class="lbl">Projects</div><div class="val">${total}</div><div class="sub">${done} done · ${total-done} active</div></div>
     <div class="sitem"><div class="lbl">Total Budget</div><div class="val">${totBudget}h</div></div>
     <div class="sitem"><div class="lbl">Hours Logged</div><div class="val">${totLogged.toFixed(1)}h</div><div class="sub">${Math.round(totLogged/totBudget*100)}% of budget</div></div>
-    <div class="sitem"><div class="lbl">Weekly Target</div><div class="val">${weeklyTgt}h</div><div class="sub">active projects</div></div>
-    ${over ? `<div class="sitem warn"><div class="lbl">⚠ Over Budget</div><div class="val">${over}</div></div>` : ''}
+    ${waiting ? `<div class="sitem"><div class="lbl">⏳ Waiting</div><div class="val" style="color:#6d28d9;">${waiting}</div><div class="sub">paused</div></div>` : ''}
+    ${behind  ? `<div class="sitem warn"><div class="lbl">⚠ Behind Pace</div><div class="val">${behind}</div></div>` : ''}
+    ${over    ? `<div class="sitem warn"><div class="lbl">⚠ Over Budget</div><div class="val">${over}</div></div>` : ''}
   `;
 }
 
 function renderCards() {
   const main = document.getElementById('main-cards');
-  main.querySelectorAll('.project-card').forEach(el=>el.remove());
-  const maxBudget = Math.max(...projects.map(p=>p.budget_hrs), 1);
-  const BAR = 280;
+  main.querySelectorAll('.project-card').forEach(el => el.remove());
 
   projects.forEach(p => {
-    const lg = loggedHrs(p), over = isOver(p);
-    const pct = Math.min(lg / p.budget_hrs, 1) * 100;
-    const overPct = over ? ((lg - p.budget_hrs) / p.budget_hrs) * 100 : 0;
-    const pe = projectedEnd(p), pace = paceStatus(p);
+    const lg   = loggedHrs(p);
+    const over = isOver(p);
+    const pct  = Math.min(lg / p.budget_hrs, 1) * 100;
+    const pace = paceStatus(p);
     const today = new Date(); today.setHours(0,0,0,0);
-    const startD = new Date(p.start_date);
-    const endD = pe || new Date(p.start_date);
-    const totalSpan = Math.max(endD - startD, 1);
-    const todayPct = Math.max(0, Math.min(100, ((today - startD) / totalSpan) * 100));
-    const elapsedPct = Math.max(0, Math.min(100, ((today - startD) / totalSpan) * 100));
-    const startStr = startD.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});
-    const endStr   = endD.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});
 
-    let statusBadge = over ? `<span class="badge b-over">Over Budget</span>`
-      : p.status==='Done'        ? `<span class="badge b-done">Done</span>`
-      : p.status==='In Progress' ? `<span class="badge b-inprog">In Progress</span>`
-      : p.status==='Waiting'     ? `<span class="badge b-waiting">Waiting</span>`
-      : `<span class="badge b-todo">To Do</span>`;
-    let paceBadge = pace==='on-track' ? `<span class="badge b-track">On Track</span>`
-      : pace==='behind'  ? `<span class="badge b-behind">Behind</span>`
-      : pace==='waiting' ? `<span class="badge b-waiting">⏳ Waiting</span>`
-      : '';
-    let payBadge = p.payment==='Purchase Order Received' ? `<span class="badge b-po">PO Received</span>` : `<span class="badge b-na">${p.payment}</span>`;
-
-    // Bar segments: green = budget portion, red = overflow portion (both inline, no overflow)
     let greenBarPct, redBarPct;
     if (over) {
       greenBarPct = (p.budget_hrs / lg) * 100;
@@ -405,16 +484,38 @@ function renderCards() {
       greenBarPct = pct;
       redBarPct   = 0;
     }
-    const ticks = [25,50,75].map(t=>`<div class="bar-tick" style="left:${t}%;"></div>`).join('');
-    const daysLeft = pe ? Math.ceil((pe - today)/(1000*3600*24)) : null;
-    const daysLeftStr = daysLeft===null ? '—' : daysLeft<0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d left`;
-    const daysLeftClass = daysLeft!==null && daysLeft<0 ? 'red' : daysLeft!==null && daysLeft<14 ? 'amber' : '';
-    const remaining = Math.max(0, p.budget_hrs - lg).toFixed(1);
 
-    const logRows = [...(p.logs||[])].sort((a,b)=>b.log_date.localeCompare(a.log_date)).map(l => {
-      const cum = (p.logs||[]).filter(x=>x.log_date<=l.log_date).reduce((s,x)=>s+(x.hours||0),0);
-      const cumPct = Math.min(cum / p.budget_hrs, 1)*100;
-      const isOvr = cum > p.budget_hrs;
+    const remaining = Math.max(0, p.budget_hrs - lg).toFixed(1);
+    const ticks = [25,50,75].map(t => `<div class="bar-tick" style="left:${t}%;"></div>`).join('');
+
+    // Days to deadline
+    let daysLeftStr = '—', daysLeftClass = '';
+    if (p.deadline) {
+      const dl = new Date(p.deadline);
+      const daysLeft = Math.ceil((dl - today) / (1000*3600*24));
+      daysLeftStr  = daysLeft < 0 ? `${Math.abs(daysLeft)}d overdue` : `${daysLeft}d left`;
+      daysLeftClass = daysLeft < 0 ? 'red' : daysLeft < 14 ? 'amber' : '';
+    }
+
+    let statusBadge = over ? `<span class="badge b-over">Over Budget</span>`
+      : p.status==='Done'        ? `<span class="badge b-done">Done</span>`
+      : p.status==='In Progress' ? `<span class="badge b-inprog">In Progress</span>`
+      : p.status==='Waiting'     ? `<span class="badge b-waiting">Waiting</span>`
+      : `<span class="badge b-todo">To Do</span>`;
+
+    let paceBadge = pace==='on-track' ? `<span class="badge b-track">On Track</span>`
+      : pace==='behind'  ? `<span class="badge b-behind">Behind</span>`
+      : pace==='waiting' ? `<span class="badge b-waiting">⏳ Waiting</span>`
+      : '';
+
+    let payBadge = p.payment==='Purchase Order Received'
+      ? `<span class="badge b-po">PO Received</span>`
+      : `<span class="badge b-na">${p.payment}</span>`;
+
+    const logRows = [...(p.logs||[])].sort((a,b) => b.log_date.localeCompare(a.log_date)).map(l => {
+      const cum    = (p.logs||[]).filter(x => x.log_date <= l.log_date).reduce((s,x) => s+(x.hours||0), 0);
+      const cumPct = Math.min(cum / p.budget_hrs, 1) * 100;
+      const isOvr  = cum > p.budget_hrs;
       return `<tr class="${isOvr?'over-row':''}">
         <td>${l.log_date}</td><td>${l.hours}h</td><td>${l.note||'—'}</td>
         <td><span class="cum-bar"><span class="cum-fill" style="width:${cumPct}%;background:${isOvr?'#dc2626':'#22c55e'};"></span></span>
@@ -443,14 +544,12 @@ function renderCards() {
               <span class="hl${over?' over':lg===p.budget_hrs?' done-lbl':''}">${lg.toFixed(1)}h logged</span>
               <span>${p.budget_hrs}h budget</span>
             </div>
-            <div style="position:relative;">
-              <div class="bar-track${over?' over':''}">
-                <div class="bar-fill${over?' full-fill':pct>=100?' full-fill':''}" style="width:${greenBarPct}%;">
-                  ${greenBarPct>12?`<span class="bar-fill-pct">${over?Math.round(p.budget_hrs/lg*100):Math.round(pct)}%</span>`:''}
-                </div>
-                ${over?`<div class="bar-overflow-seg" style="width:${redBarPct}%;">+${(lg-p.budget_hrs).toFixed(1)}h</div>`:''}
-                <div class="bar-ticks">${ticks}</div>
+            <div class="bar-track${over?' over':''}">
+              <div class="bar-fill${over||pct>=100?' full-fill':''}" style="width:${greenBarPct}%;">
+                ${greenBarPct>12?`<span class="bar-fill-pct">${over?Math.round(p.budget_hrs/lg*100):Math.round(pct)}%</span>`:''}
               </div>
+              ${over?`<div class="bar-overflow-seg" style="width:${redBarPct}%;">+${(lg-p.budget_hrs).toFixed(1)}h</div>`:''}
+              <div class="bar-ticks">${ticks}</div>
             </div>
             <div class="bar-sub">
               <span>0h</span>
@@ -459,18 +558,13 @@ function renderCards() {
             </div>
           </div>
           ${weeklyBarsHTML(p)}
-          <div class="timeline-wrap">
-            <div class="timeline-lbl"><span>📅 ${startStr}</span><span>${p.hrs_per_week}h/week target</span><span>🏁 ${endStr}</span></div>
-            <div class="timeline-track">
-              <div class="timeline-progress" style="width:${elapsedPct}%;"></div>
-              ${todayPct>=0&&todayPct<=100?`<div class="timeline-today" style="left:${todayPct}%;"><div class="timeline-today-lbl">Today</div></div>`:''}
-            </div>
-          </div>
+          ${lifespanBarHTML(p)}
         </div>
         <div class="card-stats">
           <div class="stat"><span class="s-lbl">Logged</span><span class="s-val ${over?'red':''}">${lg.toFixed(1)} / ${p.budget_hrs}h</span></div>
           <div class="stat"><span class="s-lbl">Remaining</span><span class="s-val ${over?'red':''}">${over?'−'+(lg-p.budget_hrs).toFixed(1)+'h':remaining+'h'}</span></div>
-          <div class="stat"><span class="s-lbl">Est. finish</span><span class="s-val ${daysLeftClass}">${daysLeftStr}</span></div>
+          <div class="stat"><span class="s-lbl">Deadline</span><span class="s-val ${daysLeftClass}">${daysLeftStr}</span></div>
+          <div class="stat"><span class="s-lbl">Waiting days</span><span class="s-val" style="color:#6d28d9;">${Math.round(totalWaitingDays(p))||'—'}</span></div>
           <div class="stat"><span class="s-lbl">Log entries</span><span class="s-val">${(p.logs||[]).length}</span></div>
         </div>
       </div>
@@ -496,12 +590,15 @@ function renderCards() {
   });
 }
 
-// ── UI actions ──
+// ── UI helpers ──
 function toggleLog(id) {
   document.getElementById(`log-panel-${id}`).classList.toggle('open');
   document.getElementById(`log-btn-${id}`).classList.toggle('active');
 }
-function showSaving(id) { const el=document.getElementById(`saving-${id}`); if(el){el.style.display='inline';setTimeout(()=>{el.style.display='none';},1500);} }
+function showSaving(id) {
+  const el = document.getElementById(`saving-${id}`);
+  if (el) { el.style.display = 'inline'; setTimeout(() => { el.style.display = 'none'; }, 1500); }
+}
 
 // ── Add hour log ──
 async function addLog(id) {
@@ -512,13 +609,15 @@ async function addLog(id) {
   showSaving(id);
   const { error } = await db.from('hour_logs').insert({ project_id: id, log_date: date, hours: hrs, note });
   if (error) { alert('Error saving: ' + error.message); return; }
-  // auto-update status to In Progress if was To Do
-  const p = projects.find(x=>x.id===id);
+  const p = projects.find(x => x.id === id);
   if (p && p.status === 'To Do') {
     await db.from('projects').update({ status: 'In Progress' }).eq('id', id);
   }
   await loadData(); render();
-  requestAnimationFrame(()=>{ document.getElementById(`log-panel-${id}`)?.classList.add('open'); document.getElementById(`log-btn-${id}`)?.classList.add('active'); });
+  requestAnimationFrame(() => {
+    document.getElementById(`log-panel-${id}`)?.classList.add('open');
+    document.getElementById(`log-btn-${id}`)?.classList.add('active');
+  });
 }
 
 // ── Delete log ──
@@ -526,7 +625,10 @@ async function deleteLog(pid, lid) {
   const { error } = await db.from('hour_logs').delete().eq('id', lid);
   if (error) { alert('Error: ' + error.message); return; }
   await loadData(); render();
-  requestAnimationFrame(()=>{ document.getElementById(`log-panel-${pid}`)?.classList.add('open'); document.getElementById(`log-btn-${pid}`)?.classList.add('active'); });
+  requestAnimationFrame(() => {
+    document.getElementById(`log-panel-${pid}`)?.classList.add('open');
+    document.getElementById(`log-btn-${pid}`)?.classList.add('active');
+  });
 }
 
 function toggleWaitingField() {
@@ -538,52 +640,93 @@ function toggleWaitingField() {
 function openAddModal() {
   editingId = null;
   document.getElementById('modal-title').textContent = 'Add Project';
-  ['m-name','m-team','m-pi','m-team-member','m-waiting-for'].forEach(id=>document.getElementById(id).value='');
+  ['m-name','m-team','m-pi','m-team-member','m-waiting-for','m-deadline'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('waiting-field').style.display = 'none';
-  document.getElementById('m-start').value = new Date().toISOString().split('T')[0];
-  document.getElementById('m-budget').value = 40;
-  document.getElementById('m-hpw').value = 4;
-  document.getElementById('m-status').value = 'To Do';
+  document.getElementById('m-start').value   = new Date().toISOString().split('T')[0];
+  document.getElementById('m-budget').value  = 40;
+  document.getElementById('m-status').value  = 'To Do';
   document.getElementById('m-payment').value = 'Quote NA';
   document.getElementById('modal-del').style.display = 'none';
   document.getElementById('modal-overlay').classList.add('open');
 }
+
 function openEditModal(id) {
   editingId = id;
-  const p = projects.find(x=>x.id===id);
-  document.getElementById('modal-title').textContent = 'Edit Project';
-  document.getElementById('m-name').value         = p.name;
-  document.getElementById('m-pi').value           = p.pi||'';
-  document.getElementById('m-team-member').value  = p.team_member||'';
-  document.getElementById('m-team').value         = p.team||'';
-  document.getElementById('m-waiting-for').value  = p.waiting_for||'';
-  document.getElementById('waiting-field').style.display = p.status === 'Waiting' ? 'block' : 'none';
-  document.getElementById('m-start').value  = p.start_date;
-  document.getElementById('m-budget').value = p.budget_hrs;
-  document.getElementById('m-hpw').value    = p.hrs_per_week;
-  document.getElementById('m-status').value = p.status;
-  document.getElementById('m-payment').value= p.payment;
-  document.getElementById('modal-del').style.display = '';
+  const p = projects.find(x => x.id === id);
+  document.getElementById('modal-title').textContent      = 'Edit Project';
+  document.getElementById('m-name').value                 = p.name;
+  document.getElementById('m-pi').value                   = p.pi || '';
+  document.getElementById('m-team-member').value          = p.team_member || '';
+  document.getElementById('m-team').value                 = p.team || '';
+  document.getElementById('m-waiting-for').value          = p.waiting_for || '';
+  document.getElementById('m-start').value                = p.start_date || '';
+  document.getElementById('m-deadline').value             = p.deadline || '';
+  document.getElementById('m-budget').value               = p.budget_hrs;
+  document.getElementById('m-status').value               = p.status;
+  document.getElementById('m-payment').value              = p.payment;
+  document.getElementById('waiting-field').style.display  = p.status === 'Waiting' ? 'block' : 'none';
+  document.getElementById('modal-del').style.display      = '';
   document.getElementById('modal-overlay').classList.add('open');
 }
+
 function closeModal() { document.getElementById('modal-overlay').classList.remove('open'); }
+
 async function saveModal() {
   const name = document.getElementById('m-name').value.trim();
   if (!name) { alert('Project name required.'); return; }
-  const obj = { name, pi: document.getElementById('m-pi').value.trim(), team_member: document.getElementById('m-team-member').value.trim(), team: document.getElementById('m-team').value.trim(), waiting_for: document.getElementById('m-waiting-for').value.trim(),
-    start_date: document.getElementById('m-start').value, budget_hrs: parseFloat(document.getElementById('m-budget').value)||40,
-    hrs_per_week: parseFloat(document.getElementById('m-hpw').value)||2, status: document.getElementById('m-status').value,
-    payment: document.getElementById('m-payment').value };
-  if (editingId) await db.from('projects').update(obj).eq('id', editingId);
-  else await db.from('projects').insert(obj);
+  const newStatus = document.getElementById('m-status').value;
+  const today = new Date().toISOString().split('T')[0];
+
+  const obj = {
+    name,
+    pi:          document.getElementById('m-pi').value.trim(),
+    team_member: document.getElementById('m-team-member').value.trim(),
+    team:        document.getElementById('m-team').value.trim(),
+    waiting_for: document.getElementById('m-waiting-for').value.trim(),
+    start_date:  document.getElementById('m-start').value || null,
+    deadline:    document.getElementById('m-deadline').value || null,
+    budget_hrs:  parseFloat(document.getElementById('m-budget').value) || 40,
+    status:      newStatus,
+    payment:     document.getElementById('m-payment').value
+  };
+
+  if (editingId) {
+    const oldProject = projects.find(x => x.id === editingId);
+    const oldStatus  = oldProject?.status;
+    await db.from('projects').update(obj).eq('id', editingId);
+
+    // Waiting period transitions
+    if (newStatus === 'Waiting' && oldStatus !== 'Waiting') {
+      // Open a new waiting period
+      await db.from('waiting_periods').insert({ project_id: editingId, start_date: today });
+    } else if (newStatus !== 'Waiting' && oldStatus === 'Waiting') {
+      // Close the open waiting period
+      await db.from('waiting_periods')
+        .update({ end_date: today })
+        .eq('project_id', editingId)
+        .is('end_date', null);
+    }
+  } else {
+    const { data, error } = await db.from('projects').insert(obj).select();
+    if (error) { alert('Error saving: ' + error.message); return; }
+    // If new project created as Waiting, open a waiting period
+    if (newStatus === 'Waiting' && data?.[0]) {
+      await db.from('waiting_periods').insert({ project_id: data[0].id, start_date: today });
+    }
+  }
+
   await loadData(); closeModal(); render();
 }
+
 async function deleteProject() {
   if (!confirm('Delete this project and all its logged hours?')) return;
   await db.from('projects').delete().eq('id', editingId);
   await loadData(); closeModal(); render();
 }
-document.getElementById('modal-overlay').addEventListener('click', e=>{ if(e.target===e.currentTarget) closeModal(); });
+
+document.getElementById('modal-overlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeModal();
+});
 
 init();
 </script>
