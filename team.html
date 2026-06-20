@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Image Analysis — Team Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --bg: #f0f2f8; --card: #fff; --border: #e0e4f0; --text: #111827; --muted: #6b7280;
+  --accent: #4f46e5; --green: #16a34a; --green-light: #dcfce7; --red: #dc2626;
+  --red-light: #fee2e2; --amber: #d97706; --amber-light: #fef3c7;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); font-size: 14px; }
+
+/* ── Loading ── */
+#loading-state { text-align: center; padding: 80px 32px; color: var(--muted); font-size: 16px; }
+#loading-state .spinner { width: 36px; height: 36px; border: 3px solid #e0e4f0; border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; margin: 0 auto 16px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Header ── */
+header {
+  background: var(--accent); padding: 0 32px;
+  display: flex; align-items: center; gap: 16px; height: 56px;
+  position: sticky; top: 0; z-index: 200;
+}
+header h1 { font-size: 17px; font-weight: 700; color: #fff; }
+.version-pill { background: rgba(255,255,255,.2); color: #fff; font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 99px; letter-spacing: .05em; }
+header .date { color: rgba(255,255,255,.65); font-size: 12px; }
+.nav-btn { background: rgba(255,255,255,.15); color: #fff; border: 1.5px solid rgba(255,255,255,.3); border-radius: 8px; padding: 6px 14px; font-size: 13px; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }
+.nav-btn:hover { background: rgba(255,255,255,.25); }
+.nav-btn.active { background: rgba(255,255,255,.3); border-color: rgba(255,255,255,.6); }
+
+/* ── Summary bar ── */
+.summary-bar { background: #fff; border-bottom: 1px solid var(--border); padding: 0 32px; display: flex; gap: 0; }
+.sitem { padding: 14px 28px 14px 0; border-right: 1px solid var(--border); margin-right: 28px; display: flex; flex-direction: column; gap: 2px; }
+.sitem:last-child { border-right: none; }
+.sitem .lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.sitem .val { font-size: 22px; font-weight: 800; }
+.sitem .sub { font-size: 11px; color: var(--muted); }
+.sitem.warn .val { color: var(--red); }
+.sitem.good .val { color: var(--green); }
+
+/* ── Main layout ── */
+main { padding: 24px 32px; max-width: 1400px; margin: 0 auto; }
+.sec { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 10px; }
+.sec::after { content:''; flex:1; height:1px; background: var(--border); }
+
+/* ── Period selector ── */
+.period-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+.period-tab { background: #fff; border: 1.5px solid var(--border); border-radius: 8px; padding: 6px 16px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--muted); transition: all .12s; }
+.period-tab.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+/* ── Team member cards grid ── */
+.team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(420px, 1fr)); gap: 16px; }
+
+/* ── Member card ── */
+.member-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; transition: box-shadow .15s; }
+.member-card:hover { box-shadow: 0 4px 20px rgba(79,70,229,.1); }
+
+.member-header { padding: 18px 20px 14px; display: flex; align-items: flex-start; gap: 14px; border-bottom: 1px solid var(--border); background: #fafbff; }
+.avatar { width: 44px; height: 44px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 800; color: #fff; flex-shrink: 0; }
+.member-info { flex: 1; }
+.member-name { font-size: 16px; font-weight: 700; margin-bottom: 3px; }
+.member-role { font-size: 11px; color: var(--muted); }
+.member-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+
+/* ── Stats row ── */
+.stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; border-bottom: 1px solid var(--border); }
+.stat-cell { padding: 12px 16px; display: flex; flex-direction: column; gap: 2px; border-right: 1px solid var(--border); }
+.stat-cell:last-child { border-right: none; }
+.stat-lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); }
+.stat-val { font-size: 20px; font-weight: 800; line-height: 1.1; }
+.stat-sub { font-size: 10px; color: var(--muted); }
+.stat-val.accent { color: var(--accent); }
+.stat-val.green  { color: var(--green); }
+.stat-val.amber  { color: var(--amber); }
+.stat-val.red    { color: var(--red); }
+
+/* ── Project breakdown ── */
+.projects-section { padding: 14px 20px; }
+.proj-section-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 10px; }
+.proj-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.proj-row:last-child { margin-bottom: 0; }
+.proj-name { font-size: 12px; font-weight: 600; width: 140px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proj-mini-bar { flex: 1; height: 14px; border-radius: 4px; background: #f0f2f8; overflow: hidden; position: relative; display: flex; }
+.proj-mini-fill { height: 100%; border-radius: 4px 0 0 4px; transition: width .4s ease; }
+.proj-mini-overflow { height: 100%; background: linear-gradient(90deg, #ef4444, #b91c1c); border-radius: 0 4px 4px 0; }
+.proj-hrs { font-size: 11px; font-weight: 700; color: var(--muted); width: 48px; text-align: right; flex-shrink: 0; }
+.proj-pace { width: 62px; flex-shrink: 0; }
+
+/* ── Weekly sparkline ── */
+.sparkline-section { padding: 12px 20px 14px; border-top: 1px solid var(--border); }
+.sparkline-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 8px; }
+.sparkline { display: flex; gap: 4px; align-items: flex-end; height: 36px; }
+.spark-col { display: flex; flex-direction: column; align-items: center; gap: 2px; flex: 1; }
+.spark-bar-wrap { display: flex; align-items: flex-end; height: 28px; width: 100%; }
+.spark-bar { width: 100%; border-radius: 3px 3px 0 0; min-height: 2px; transition: height .3s; }
+.spark-lbl { font-size: 8px; color: var(--muted); white-space: nowrap; text-align: center; }
+.spark-hrs { font-size: 8px; font-weight: 700; color: var(--text); line-height: 1; min-height: 9px; text-align: center; width: 100%; }
+.spark-col.current .spark-bar { outline: 2px solid var(--accent); outline-offset: 1px; }
+.spark-col.current .spark-lbl { color: var(--accent); font-weight: 700; }
+
+/* ── Badges ── */
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; font-size: 10px; font-weight: 600; }
+.b-track   { background: #dbeafe; color: #1e40af; }
+.b-behind  { background: #fff7ed; color: #9a3412; }
+.b-waiting { background: #f5f3ff; color: #6d28d9; }
+.b-done    { background: #dcfce7; color: #166534; }
+.b-todo    { background: #e2e8f0; color: #475569; }
+.b-inprog  { background: #fef3c7; color: #92400e; }
+.b-over    { background: #fee2e2; color: #991b1b; }
+
+/* ── Unassigned section ── */
+.unassigned-card { background: var(--card); border: 1px dashed var(--border); border-radius: 14px; padding: 18px 20px; color: var(--muted); font-size: 13px; }
+.unassigned-card .proj-row { opacity: .7; }
+</style>
+</head>
+<body>
+
+<div id="loading-state">
+  <div class="spinner"></div>
+  Loading team data…
+</div>
+
+<div id="app" style="display:none;">
+  <header>
+    <svg width="22" height="22" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2" viewBox="0 0 24 24"><circle cx="9" cy="7" r="4"/><path d="M3 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><path d="M21 21v-2a4 4 0 0 0-3-3.85"/></svg>
+    <h1>Image Analysis — Team Dashboard</h1>
+    <span class="version-pill">v2</span>
+    <span class="date" id="today-lbl"></span>
+    <div style="margin-left:auto;display:flex;gap:8px;">
+      <a class="nav-btn" href="index.html">📋 Projects</a>
+      <a class="nav-btn active" href="team.html">👥 Team</a>
+    </div>
+  </header>
+  <div class="summary-bar" id="summary-bar"></div>
+  <main>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+      <div class="sec" style="flex:1;margin-bottom:0;">Team Members</div>
+      <div class="period-tabs" style="margin-bottom:0;">
+        <button class="period-tab" onclick="setPeriod('week')" id="tab-week">This Week</button>
+        <button class="period-tab active" onclick="setPeriod('month')" id="tab-month">This Month</button>
+        <button class="period-tab" onclick="setPeriod('all')" id="tab-all">All Time</button>
+      </div>
+    </div>
+    <div class="team-grid" id="team-grid"></div>
+  </main>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://yyaqudqtykzyurzpamgr.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_A0Plsj0wLNewDlKdw6n9QQ_TnhgPAPu';
+
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+});
+
+let projects = [];
+let currentPeriod = 'month';
+
+// ── Date helpers ──
+function todayDate() { const d = new Date(); d.setHours(0,0,0,0); return d; }
+
+function weekStart(d) {
+  const date = new Date(d); date.setHours(0,0,0,0);
+  const day = date.getDay();
+  date.setDate(date.getDate() - (day === 0 ? 6 : day - 1));
+  return date;
+}
+
+function monthStart(d) {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+function isInPeriod(dateStr, period) {
+  const today = todayDate();
+  const d = new Date(dateStr);
+  if (period === 'week')  return d >= weekStart(today);
+  if (period === 'month') return d >= monthStart(today);
+  return true; // all time
+}
+
+// ── Init ──
+async function init() {
+  try {
+    await loadData();
+    document.getElementById('loading-state').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    document.getElementById('today-lbl').textContent = new Date().toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'long',year:'numeric'});
+    render();
+  } catch(e) {
+    document.getElementById('loading-state').innerHTML = `<div style="color:#dc2626;">Error: ${e.message}</div>`;
+  }
+}
+
+async function loadData() {
+  const [{ data: projs, error: pe }, { data: logs, error: le }, { data: waits, error: we }] = await Promise.all([
+    db.from('projects').select('*').order('created_at'),
+    db.from('hour_logs').select('*').order('log_date'),
+    db.from('waiting_periods').select('*').order('start_date')
+  ]);
+  if (pe) throw pe;
+  if (le) throw le;
+  if (we) throw we;
+  projects = projs.map(p => ({
+    ...p,
+    logs: logs.filter(l => l.project_id === p.id),
+    waiting_periods: (waits || []).filter(w => w.project_id === p.id)
+  }));
+}
+
+// ── Computed helpers ──
+function loggedHrs(p) { return (p.logs||[]).reduce((s,l) => s+(l.hours||0), 0); }
+function loggedHrsPeriod(p, period) {
+  return (p.logs||[]).filter(l => isInPeriod(l.log_date, period)).reduce((s,l) => s+(l.hours||0), 0);
+}
+
+function totalWaitingDays(p) {
+  const today = todayDate();
+  return (p.waiting_periods||[]).reduce((total, w) => {
+    const ws = new Date(w.start_date);
+    const we = w.end_date ? new Date(w.end_date) : today;
+    return total + Math.max(0, (we - ws) / (1000*3600*24));
+  }, 0);
+}
+
+function paceStatus(p) {
+  if (p.status === 'Waiting') return 'waiting';
+  if (p.status !== 'In Progress') return null;
+  if (!p.start_date || !p.deadline) return null;
+  const today = todayDate();
+  const start = new Date(p.start_date);
+  const deadline = new Date(p.deadline);
+  if (today < start) return null;
+  const calElapsed  = (today - start) / (1000*3600*24);
+  const waitDays    = totalWaitingDays(p);
+  const effElapsed  = Math.max(0, calElapsed - waitDays);
+  const totalDays   = Math.max(1, (deadline - start) / (1000*3600*24));
+  const expected    = (effElapsed / totalDays) * p.budget_hrs;
+  return loggedHrs(p) >= expected * 0.9 ? 'on-track' : 'behind';
+}
+
+// ── Avatar colours ──
+const PALETTE = ['#4f46e5','#0891b2','#059669','#d97706','#dc2626','#7c3aed','#db2777','#0284c7'];
+function avatarColor(name) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffffffff;
+  return PALETTE[Math.abs(h) % PALETTE.length];
+}
+function initials(name) {
+  return name.trim().split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase();
+}
+
+// ── Weekly sparkline data (last 8 weeks) ──
+function sparklineData(memberProjects) {
+  const today = todayDate();
+  const weeks = [];
+  const cur = new Date(weekStart(today));
+  cur.setDate(cur.getDate() - 7 * 7); // 8 weeks back
+  while (cur <= today) { weeks.push(new Date(cur)); cur.setDate(cur.getDate() + 7); }
+
+  const weekMap = {};
+  memberProjects.forEach(p => {
+    (p.logs||[]).forEach(l => {
+      const ws = weekStart(new Date(l.log_date)).getTime();
+      weekMap[ws] = (weekMap[ws] || 0) + (l.hours || 0);
+    });
+  });
+
+  return weeks.map(w => ({
+    date: w,
+    hrs: weekMap[w.getTime()] || 0,
+    isCurrent: w.getTime() === weekStart(today).getTime()
+  }));
+}
+
+function paceBadge(pace) {
+  if (pace === 'on-track') return `<span class="badge b-track">On Track</span>`;
+  if (pace === 'behind')   return `<span class="badge b-behind">Behind</span>`;
+  if (pace === 'waiting')  return `<span class="badge b-waiting">⏳ Wait</span>`;
+  if (pace === 'done')     return `<span class="badge b-done">Done</span>`;
+  return `<span class="badge b-todo">To Do</span>`;
+}
+
+// ── Render ──
+function setPeriod(p) {
+  currentPeriod = p;
+  ['week','month','all'].forEach(t => document.getElementById(`tab-${t}`).classList.toggle('active', t === p));
+  render();
+}
+
+function render() { renderSummary(); renderTeam(); }
+
+function renderSummary() {
+  // Collect all team members
+  const members = [...new Set(projects.map(p => p.team_member).filter(Boolean))];
+  const today = todayDate();
+
+  const totalHrsWeek  = projects.reduce((s,p) => s + loggedHrsPeriod(p,'week'), 0);
+  const totalHrsMonth = projects.reduce((s,p) => s + loggedHrsPeriod(p,'month'), 0);
+  const behindCount   = projects.filter(p => paceStatus(p) === 'behind').length;
+  const waitingCount  = projects.filter(p => p.status === 'Waiting').length;
+  const unassigned    = projects.filter(p => !p.team_member && p.status !== 'Done').length;
+
+  document.getElementById('summary-bar').innerHTML = `
+    <div class="sitem"><div class="lbl">Team Members</div><div class="val">${members.length}</div><div class="sub">with active projects</div></div>
+    <div class="sitem"><div class="lbl">Hours This Week</div><div class="val">${totalHrsWeek.toFixed(1)}h</div></div>
+    <div class="sitem"><div class="lbl">Hours This Month</div><div class="val">${totalHrsMonth.toFixed(1)}h</div></div>
+    ${behindCount ? `<div class="sitem warn"><div class="lbl">⚠ Behind Pace</div><div class="val">${behindCount}</div><div class="sub">projects</div></div>` : ''}
+    ${waitingCount ? `<div class="sitem"><div class="lbl">⏳ Waiting</div><div class="val" style="color:#6d28d9;">${waitingCount}</div><div class="sub">blocked</div></div>` : ''}
+    ${unassigned ? `<div class="sitem warn"><div class="lbl">⚠ Unassigned</div><div class="val">${unassigned}</div><div class="sub">no team member</div></div>` : ''}
+  `;
+}
+
+function renderTeam() {
+  const grid = document.getElementById('team-grid');
+  grid.innerHTML = '';
+
+  // Collect unique team members
+  const memberNames = [...new Set(projects.map(p => p.team_member).filter(Boolean))].sort();
+
+  memberNames.forEach(name => {
+    const memberProjects = projects.filter(p => p.team_member === name);
+    const activeProjs = memberProjects.filter(p => p.status === 'In Progress' || p.status === 'Waiting');
+    const hrsThisPeriod = memberProjects.reduce((s,p) => s + loggedHrsPeriod(p, currentPeriod), 0);
+    const hrsWeek  = memberProjects.reduce((s,p) => s + loggedHrsPeriod(p,'week'), 0);
+    const hrsMonth = memberProjects.reduce((s,p) => s + loggedHrsPeriod(p,'month'), 0);
+    const hrsAll   = memberProjects.reduce((s,p) => s + loggedHrs(p), 0);
+    const totalBudget = memberProjects.reduce((s,p) => s + p.budget_hrs, 0);
+    const utilization = totalBudget > 0 ? Math.round(hrsAll / totalBudget * 100) : 0;
+    const behindCount = memberProjects.filter(p => paceStatus(p) === 'behind').length;
+    const waitingCount = memberProjects.filter(p => p.status === 'Waiting').length;
+
+    // Period label
+    const periodLabel = currentPeriod === 'week' ? 'This Week' : currentPeriod === 'month' ? 'This Month' : 'All Time';
+    const periodHrs = currentPeriod === 'week' ? hrsWeek : currentPeriod === 'month' ? hrsMonth : hrsAll;
+
+    // Stat cells
+    const statHrsVal = periodHrs.toFixed(1) + 'h';
+    const statHrsClass = periodHrs === 0 ? 'red' : '';
+
+    // Project rows
+    const sortedProjs = [...memberProjects].sort((a,b) => {
+      const order = { 'In Progress': 0, 'Waiting': 1, 'To Do': 2, 'Done': 3 };
+      return (order[a.status]??4) - (order[b.status]??4);
+    });
+
+    const maxBudget = Math.max(...memberProjects.map(p => p.budget_hrs), 1);
+    const projRows = sortedProjs.map(p => {
+      const lg   = loggedHrs(p);
+      const over = lg > p.budget_hrs;
+      const pct  = Math.min(lg / p.budget_hrs, 1) * 100;
+      const pace = p.status === 'Done' ? 'done' : paceStatus(p);
+      const fillColor = over ? '#22c55e' : pct > 70 ? '#22c55e' : pct > 30 ? '#86efac' : '#fde68a';
+      let greenW = over ? (p.budget_hrs / lg * 100) : pct;
+      let redW   = over ? ((lg - p.budget_hrs) / lg * 100) : 0;
+      const statusDot = {
+        'In Progress': '🟡', 'Waiting': '🟣', 'Done': '🟢', 'To Do': '⚪'
+      }[p.status] || '⚪';
+      return `<div class="proj-row">
+        <div class="proj-name" title="${p.name}">${statusDot} ${p.name}</div>
+        <div class="proj-mini-bar">
+          <div class="proj-mini-fill" style="width:${greenW.toFixed(1)}%;background:${over?'#22c55e':fillColor};"></div>
+          ${over ? `<div class="proj-mini-overflow" style="width:${redW.toFixed(1)}%;"></div>` : ''}
+        </div>
+        <div class="proj-hrs">${lg.toFixed(0)}/${p.budget_hrs}h</div>
+        <div class="proj-pace">${paceBadge(pace)}</div>
+      </div>`;
+    }).join('');
+
+    // Sparkline
+    const sparkData = sparklineData(memberProjects);
+    const maxSpark = Math.max(...sparkData.map(w => w.hrs), 1);
+    const SPARK_H = 28;
+    const sparkCols = sparkData.map(w => {
+      const barH = w.hrs > 0 ? Math.max(2, Math.round((w.hrs / maxSpark) * SPARK_H)) : 0;
+      const dateStr = w.date.toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+      const [day, mon] = dateStr.split(' ');
+      const barColor = w.isCurrent ? 'var(--accent)' : w.hrs > 0 ? '#818cf8' : '#e5e7eb';
+      return `<div class="spark-col${w.isCurrent?' current':''}">
+        <div class="spark-hrs">${w.hrs > 0 ? w.hrs+'h' : ''}</div>
+        <div class="spark-bar-wrap">
+          <div class="spark-bar" style="height:${barH}px;background:${barColor};"></div>
+        </div>
+        <div class="spark-lbl">${mon} ${day}</div>
+      </div>`;
+    }).join('');
+
+    // Header badges
+    let headerBadges = '';
+    if (behindCount) headerBadges += `<span class="badge b-behind">⚠ ${behindCount} behind</span>`;
+    if (waitingCount) headerBadges += `<span class="badge b-waiting">⏳ ${waitingCount} waiting</span>`;
+
+    const card = document.createElement('div');
+    card.className = 'member-card';
+    card.innerHTML = `
+      <div class="member-header">
+        <div class="avatar" style="background:${avatarColor(name)};">${initials(name)}</div>
+        <div class="member-info">
+          <div class="member-name">${name}</div>
+          <div class="member-role">${activeProjs.length} active · ${memberProjects.length} total projects</div>
+          ${headerBadges ? `<div class="member-badges">${headerBadges}</div>` : ''}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:11px;color:var(--muted);">Utilization</div>
+          <div style="font-size:20px;font-weight:800;color:${utilization>100?'var(--red)':utilization>70?'var(--green)':'var(--accent)'};">${utilization}%</div>
+          <div style="font-size:10px;color:var(--muted);">of budget logged</div>
+        </div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-cell">
+          <div class="stat-lbl">${periodLabel}</div>
+          <div class="stat-val ${statHrsClass}">${statHrsVal}</div>
+          <div class="stat-sub">hours logged</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-lbl">This Week</div>
+          <div class="stat-val ${hrsWeek===0?'red':'accent'}">${hrsWeek.toFixed(1)}h</div>
+          <div class="stat-sub">hours logged</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-lbl">All Time</div>
+          <div class="stat-val">${hrsAll.toFixed(1)}h</div>
+          <div class="stat-sub">of ${totalBudget}h budgeted</div>
+        </div>
+      </div>
+      <div class="projects-section">
+        <div class="proj-section-title">Projects <span style="font-weight:400;color:#9ca3af;">— hours logged / budget</span></div>
+        ${projRows || '<div style="color:var(--muted);font-size:12px;font-style:italic;">No projects assigned.</div>'}
+      </div>
+      <div class="sparkline-section">
+        <div class="sparkline-title">Weekly hours — last 8 weeks</div>
+        <div class="sparkline">${sparkCols}</div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  // Unassigned projects
+  const unassigned = projects.filter(p => !p.team_member && p.status !== 'Done');
+  if (unassigned.length > 0) {
+    const sec = document.createElement('div');
+    sec.style.gridColumn = '1 / -1';
+    sec.innerHTML = `<div class="sec" style="margin-top:8px;">Unassigned Projects</div>`;
+    grid.appendChild(sec);
+
+    const uCard = document.createElement('div');
+    uCard.className = 'unassigned-card';
+    uCard.style.gridColumn = '1 / -1';
+    uCard.innerHTML = `<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:10px;">These active projects have no team member assigned — edit them to assign someone.</div>` +
+      unassigned.map(p => `
+        <div class="proj-row">
+          <div class="proj-name" title="${p.name}" style="width:180px;">${p.name}</div>
+          <div style="font-size:11px;color:var(--muted);">PI: ${p.pi||'—'} · Student: ${p.team||'—'}</div>
+          <span class="badge b-todo" style="margin-left:auto;">${p.status}</span>
+        </div>`).join('');
+    grid.appendChild(uCard);
+  }
+
+  if (memberNames.length === 0) {
+    grid.innerHTML = `<div style="color:var(--muted);font-size:14px;padding:40px 0;">No team members found. Add a "Team Member" to your projects to see them here.</div>`;
+  }
+}
+
+init();
+</script>
+</body>
+</html>
