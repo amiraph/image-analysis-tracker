@@ -127,9 +127,10 @@ main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; fle
 .del-log:hover { color: var(--red); background: #fee2e2; }
 .add-log-row { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; padding-top: 12px; border-top: 1px solid var(--border); }
 .add-log-row label { font-size: 11px; font-weight: 600; color: var(--muted); display: flex; flex-direction: column; gap: 3px; }
-.add-log-row input { border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 13px; font-family: inherit; background: #fff; }
+.add-log-row input, .add-log-row select { border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px; font-size: 13px; font-family: inherit; background: #fff; }
 .add-log-row input[type=number] { width: 80px; } .add-log-row input[type=date] { width: 140px; } .add-log-row input[type=text] { width: 200px; }
-.add-log-row input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+.add-log-row select { width: 90px; }
+.add-log-row input:focus, .add-log-row select:focus { outline: 2px solid var(--accent); border-color: transparent; }
 .add-log-submit { background: var(--green); color: #fff; border: none; border-radius: 7px; padding: 7px 16px; font-size: 13px; font-weight: 600; cursor: pointer; align-self: flex-end; }
 .add-log-submit:hover { background: #15803d; }
 .saving-indicator { font-size: 11px; color: var(--muted); margin-left: auto; display: none; }
@@ -187,6 +188,8 @@ main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; fle
 .project-card.expanded { grid-column: 1 / -1; }
 .project-card.is-archived .card-summary { opacity: .65; }
 .b-archived { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
+.b-dev { background: #dbeafe; color: #1e40af; }
+.b-run { background: #ffedd5; color: #c2410c; }
 </style>
 </head>
 <body>
@@ -262,8 +265,11 @@ main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; fle
       <label>Waiting for</label>
       <input type="text" id="m-waiting-for" placeholder="e.g. new images from student"/>
     </div>
-    <div class="field"><label>Payment State</label>
-      <select id="m-payment"><option>Quote NA</option><option>Purchase Order Received</option><option>Invoiced</option><option>Paid</option></select>
+    <div class="two-col">
+      <div class="field"><label>Payment State</label>
+        <select id="m-payment"><option>Quote NA</option><option>Purchase Order Received</option><option>Invoiced</option><option>Paid</option></select>
+      </div>
+      <div class="field"><label>Quote No.</label><input type="text" id="m-quote-no" placeholder="e.g. Q-2026-014"/></div>
     </div>
     <div class="modal-btns">
       <button class="btn-delete" id="modal-del" style="display:none;margin-right:auto;" onclick="deleteProject()">Delete Project</button>
@@ -290,6 +296,11 @@ let filterStatus = 'all';
 let filterTeamMember = 'all';
 let showArchived = false;
 const STATUS_ORDER = { 'To Do': 0, 'In Progress': 1, 'Waiting': 2, 'Done': 3 };
+
+// ── UI state that must survive a re-render (so editing/logging doesn't
+// visually shuffle or collapse cards) ──
+let expandedIds = new Set();
+let openLogIds = new Set();
 
 // ── Init ──
 async function init() {
@@ -500,8 +511,11 @@ function weeklyBarsHTML(p) {
   const weekMap = {};
   logs.forEach(l => {
     const ws = weekStart(new Date(l.log_date)).getTime();
-    weekMap[ws] = (weekMap[ws] || 0) + (l.hours || 0);
+    if (!weekMap[ws]) weekMap[ws] = { dev: 0, run: 0 };
+    const key = l.type === 'Run' ? 'run' : 'dev';
+    weekMap[ws][key] += (l.hours || 0);
   });
+  const weekTotal = ws => { const w = weekMap[ws]; return w ? w.dev + w.run : 0; };
 
   // Implied weekly target from deadline
   let impliedHpw = null;
@@ -510,26 +524,29 @@ function weeklyBarsHTML(p) {
     impliedHpw = p.budget_hrs / totalWeeks;
   }
 
-  const maxHrs = Math.max(...weeks.map(w => weekMap[w.getTime()] || 0), impliedHpw || 1);
+  const maxHrs = Math.max(...weeks.map(w => weekTotal(w.getTime())), impliedHpw || 1);
   const BAR_MAX = 40;
   const targetLineTop = impliedHpw ? BAR_MAX - Math.round((impliedHpw / maxHrs) * BAR_MAX) : null;
 
   const display = weeks.slice(-20);
   const cols = display.map(w => {
     const wt   = w.getTime();
-    const hrs  = weekMap[wt] || 0;
+    const wk   = weekMap[wt] || { dev: 0, run: 0 };
+    const hrs  = wk.dev + wk.run;
     const barH = hrs > 0 ? Math.max(3, Math.round((hrs / maxHrs) * BAR_MAX)) : 0;
+    const devH = hrs > 0 ? Math.round((wk.dev / hrs) * barH) : 0;
+    const runH = barH - devH;
     const isCurrent = wt === thisWeekMs;
-    const barColor = hrs === 0 ? '#e5e7eb'
-      : impliedHpw && hrs >= impliedHpw ? '#16a34a'
-      : impliedHpw && hrs >= impliedHpw * 0.7 ? '#86efac'
-      : '#fde68a';
     const dateStr = w.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
     const [day, mon] = dateStr.split(' ');
-    return `<div class="week-col${isCurrent?' current-week':''}" title="${dateStr}: ${hrs ? hrs+'h logged' : 'no hours logged'}${isCurrent?' (this week)':''}">
-      <div class="week-hrs">${hrs > 0 ? hrs+'h' : ''}</div>
+    const tooltip = hrs ? `${dateStr}: ${wk.dev.toFixed(1)}h Dev, ${wk.run.toFixed(1)}h Run` : `${dateStr}: no hours logged`;
+    return `<div class="week-col${isCurrent?' current-week':''}" title="${tooltip}${isCurrent?' (this week)':''}">
+      <div class="week-hrs">${hrs > 0 ? hrs.toFixed(1)+'h' : ''}</div>
       <div class="week-bar-track">
-        <div class="week-bar" style="height:${barH}px;background:${barColor};"></div>
+        <div class="week-bar" style="height:${barH}px;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden;">
+          ${runH > 0 ? `<div style="height:${runH}px;background:#f97316;"></div>` : ''}
+          ${devH > 0 ? `<div style="height:${devH}px;background:#2563eb;"></div>` : ''}
+        </div>
       </div>
       <div class="week-lbl">${mon}<br>${day}</div>
     </div>`;
@@ -537,7 +554,10 @@ function weeklyBarsHTML(p) {
 
   const targetLabel = impliedHpw ? `— - - avg target: ${impliedHpw.toFixed(1)}h/wk` : '';
   return `<div class="weekly-section">
-    <div class="weekly-title">Hours per week <span style="font-weight:400;color:#9ca3af;">${targetLabel}</span></div>
+    <div class="weekly-title">Hours per week <span style="font-weight:400;color:#9ca3af;">${targetLabel}</span>
+      <span style="font-weight:400;margin-left:8px;"><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#2563eb;margin-right:3px;"></span>Dev
+      <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#f97316;margin:0 3px 0 8px;"></span>Run</span>
+    </div>
     <div class="weekly-bars" style="position:relative;">
       ${targetLineTop !== null ? `<div class="target-line" style="top:${targetLineTop}px;"></div>` : ''}
       ${cols}
@@ -550,8 +570,13 @@ function applyFilters(list) {
   let out = list;
   if (filterStatus !== 'all') out = out.filter(p => p.status === filterStatus);
   if (filterTeamMember !== 'all') out = out.filter(p => (p.team_member || '') === filterTeamMember);
-  // Sort by status (stable sort preserves original created_at order within a group)
-  return [...out].sort((a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99));
+  // Primary sort: status. Secondary sort: created_at (explicit, so a card's
+  // position never shifts just because you edited it — only a status change
+  // can move it to a different group).
+  return [...out].sort((a, b) =>
+    (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99) ||
+    (a.created_at || '').localeCompare(b.created_at || '')
+  );
 }
 
 function populateTeamMemberOptions() {
@@ -614,6 +639,7 @@ function renderCardsInto(containerId, list) {
 }
 
 function toggleExpand(id) {
+  if (expandedIds.has(id)) expandedIds.delete(id); else expandedIds.add(id);
   document.getElementById(`card-${id}`)?.classList.toggle('expanded');
 }
 
@@ -666,16 +692,21 @@ function buildCardElement(p) {
       const cum    = (p.logs||[]).filter(x => x.log_date <= l.log_date).reduce((s,x) => s+(x.hours||0), 0);
       const cumPct = Math.min(cum / p.budget_hrs, 1) * 100;
       const isOvr  = cum > p.budget_hrs;
+      const isRun  = l.type === 'Run';
+      const typeBadge = `<span class="badge ${isRun?'b-run':'b-dev'}">${isRun?'Run':'Dev'}</span>`;
       return `<tr class="${isOvr?'over-row':''}">
-        <td>${fmtDate(l.log_date)}</td><td>${l.hours}h</td><td>${l.note||'—'}</td>
+        <td>${fmtDate(l.log_date)}</td><td>${l.hours}h</td><td>${typeBadge}</td><td>${l.note||'—'}</td>
         <td><span class="cum-bar"><span class="cum-fill" style="width:${cumPct}%;background:${isOvr?'#dc2626':'#22c55e'};"></span></span>
           <span style="font-size:10px;color:var(--muted);margin-left:5px;">${cum.toFixed(1)}h</span></td>
         <td><button class="del-log" onclick="deleteLog('${p.id}','${l.id}')">✕</button></td>
       </tr>`;
     }).join('');
 
+    const isExpanded = expandedIds.has(p.id);
+    const isLogOpen  = openLogIds.has(p.id);
+
     const card = document.createElement('div');
-    card.className = `project-card${over?' over-budget':''}${p.archived?' is-archived':''}`;
+    card.className = `project-card${over?' over-budget':''}${p.archived?' is-archived':''}${isExpanded?' expanded':''}`;
     card.id = `card-${p.id}`;
     card.innerHTML = `
       <div class="card-summary" onclick="toggleExpand('${p.id}')">
@@ -704,6 +735,7 @@ function buildCardElement(p) {
             ${p.team_member ? `<div class="ppi">${p.team_member}</div>` : ''}
             <div class="meta-row" style="margin-top:8px;">${statusBadge}${paceBadge}</div>
             <div class="meta-row">${payBadge}${archivedBadge}</div>
+            ${p.quote_no ? `<div class="ppi">📄 Quote ${p.quote_no}</div>` : ''}
             ${p.waiting_for ? `<div style="margin-top:6px;font-size:11px;color:#6d28d9;background:#f5f3ff;border-radius:5px;padding:4px 8px;">⏳ ${p.waiting_for}</div>` : ''}
           </div>
           <div class="card-visual">
@@ -737,19 +769,25 @@ function buildCardElement(p) {
           </div>
         </div>
         <div class="card-actions">
-          <button class="log-toggle-btn" id="log-btn-${p.id}" onclick="toggleLog('${p.id}')">＋ Log Hours <span style="font-size:11px;color:var(--muted);">(${(p.logs||[]).length} entries)</span></button>
+          <button class="log-toggle-btn${isLogOpen?' active':''}" id="log-btn-${p.id}" onclick="toggleLog('${p.id}')">＋ Log Hours <span style="font-size:11px;color:var(--muted);">(${(p.logs||[]).length} entries)</span></button>
           <button class="edit-btn" onclick="openEditModal('${p.id}')">✎ Edit</button>
           <button class="edit-btn" onclick="setArchived('${p.id}', ${p.archived ? 'false' : 'true'})">${p.archived ? '↩ Unarchive' : '🗄 Archive'}</button>
           <span class="saving-indicator" id="saving-${p.id}">Saving…</span>
         </div>
-        <div class="log-panel" id="log-panel-${p.id}">
+        <div class="log-panel${isLogOpen?' open':''}" id="log-panel-${p.id}">
           <table class="log-table">
-            <thead><tr><th>Date</th><th>Hours</th><th>Note</th><th>Cumulative Progress</th><th></th></tr></thead>
-            <tbody>${logRows||`<tr><td colspan="5" style="color:var(--muted);font-size:12px;font-style:italic;padding:8px 10px;">No hours logged yet.</td></tr>`}</tbody>
+            <thead><tr><th>Date</th><th>Hours</th><th>Type</th><th>Note</th><th>Cumulative Progress</th><th></th></tr></thead>
+            <tbody>${logRows||`<tr><td colspan="6" style="color:var(--muted);font-size:12px;font-style:italic;padding:8px 10px;">No hours logged yet.</td></tr>`}</tbody>
           </table>
           <div class="add-log-row">
             <label>Date<input type="text" id="li-date-${p.id}" value="${todayDDMMYYYY()}" placeholder="DD/MM/YYYY" maxlength="10" oninput="autoFmtDate(this)" style="width:120px;"/></label>
             <label>Hours<input type="number" id="li-hrs-${p.id}" min="0.5" step="0.5" placeholder="4"/></label>
+            <label>Type
+              <select id="li-type-${p.id}">
+                <option value="Dev">Dev</option>
+                <option value="Run">Run</option>
+              </select>
+            </label>
             <label>Note (optional)<input type="text" id="li-note-${p.id}" placeholder="What was done this week?"/></label>
             <button class="add-log-submit" onclick="addLog('${p.id}')">Log Hours</button>
           </div>
@@ -761,6 +799,7 @@ function buildCardElement(p) {
 
 // ── UI helpers ──
 function toggleLog(id) {
+  if (openLogIds.has(id)) openLogIds.delete(id); else openLogIds.add(id);
   document.getElementById(`log-panel-${id}`).classList.toggle('open');
   document.getElementById(`log-btn-${id}`).classList.toggle('active');
 }
@@ -774,33 +813,28 @@ async function addLog(id) {
   const rawDate = document.getElementById(`li-date-${id}`).value;
   const date = toISO(rawDate);
   const hrs  = parseFloat(document.getElementById(`li-hrs-${id}`).value);
+  const type = document.getElementById(`li-type-${id}`).value;
   const note = document.getElementById(`li-note-${id}`).value.trim();
   if (!date || !hrs || hrs <= 0) { alert('Enter a valid date (DD/MM/YYYY) and hours.'); return; }
   showSaving(id);
-  const { error } = await db.from('hour_logs').insert({ project_id: id, log_date: date, hours: hrs, note });
+  const { error } = await db.from('hour_logs').insert({ project_id: id, log_date: date, hours: hrs, type, note });
   if (error) { alert('Error saving: ' + error.message); return; }
   const p = projects.find(x => x.id === id);
   if (p && p.status === 'To Do') {
     await db.from('projects').update({ status: 'In Progress' }).eq('id', id);
   }
+  // Keep this card open/expanded through the refresh (state is restored
+  // automatically by buildCardElement from expandedIds/openLogIds).
+  expandedIds.add(id); openLogIds.add(id);
   await loadData(); render();
-  requestAnimationFrame(() => {
-    document.getElementById(`card-${id}`)?.classList.add('expanded');
-    document.getElementById(`log-panel-${id}`)?.classList.add('open');
-    document.getElementById(`log-btn-${id}`)?.classList.add('active');
-  });
 }
 
 // ── Delete log ──
 async function deleteLog(pid, lid) {
   const { error } = await db.from('hour_logs').delete().eq('id', lid);
   if (error) { alert('Error: ' + error.message); return; }
+  expandedIds.add(pid); openLogIds.add(pid);
   await loadData(); render();
-  requestAnimationFrame(() => {
-    document.getElementById(`card-${pid}`)?.classList.add('expanded');
-    document.getElementById(`log-panel-${pid}`)?.classList.add('open');
-    document.getElementById(`log-btn-${pid}`)?.classList.add('active');
-  });
 }
 
 // ── Archive / unarchive ──
@@ -819,7 +853,7 @@ function toggleWaitingField() {
 function openAddModal() {
   editingId = null;
   document.getElementById('modal-title').textContent = 'Add Project';
-  ['m-name','m-team','m-pi','m-team-member','m-waiting-for','m-deadline'].forEach(id => document.getElementById(id).value = '');
+  ['m-name','m-team','m-pi','m-team-member','m-waiting-for','m-deadline','m-quote-no'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('waiting-field').style.display = 'none';
   document.getElementById('m-start').value   = todayDDMMYYYY();
   document.getElementById('m-budget').value  = 40;
@@ -843,6 +877,7 @@ function openEditModal(id) {
   document.getElementById('m-budget').value               = p.budget_hrs;
   document.getElementById('m-status').value               = p.status;
   document.getElementById('m-payment').value              = p.payment;
+  document.getElementById('m-quote-no').value              = p.quote_no || '';
   document.getElementById('waiting-field').style.display  = p.status === 'Waiting' ? 'block' : 'none';
   document.getElementById('modal-del').style.display      = '';
   document.getElementById('modal-overlay').classList.add('open');
@@ -866,7 +901,8 @@ async function saveModal() {
     deadline:    toISO(document.getElementById('m-deadline').value),
     budget_hrs:  parseFloat(document.getElementById('m-budget').value) || 40,
     status:      newStatus,
-    payment:     document.getElementById('m-payment').value
+    payment:     document.getElementById('m-payment').value,
+    quote_no:    document.getElementById('m-quote-no').value.trim()
   };
 
   if (editingId) {
