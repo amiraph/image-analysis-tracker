@@ -171,8 +171,9 @@ main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; fle
 .project-card.expanded .cs-chevron { transform: rotate(90deg); }
 .cs-main { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .cs-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.cs-name { font-size: 13.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.cs-name { font-size: 13.5px; font-weight: 700; }
 .cs-sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-over-row { margin-top: 2px; }
 .cs-bar-wrap { flex: 0 0 150px; }
 .cs-mini-bar-track { position: relative; height: 12px; border-radius: 6px; background: var(--green-light); border: 1px solid #bbf7d0; overflow: hidden; }
 .cs-mini-bar-track.over { background: #fee2e2; border-color: #fca5a5; }
@@ -671,8 +672,7 @@ function buildCardElement(p) {
       daysLeftClass = daysLeft < 0 ? 'red' : daysLeft < 14 ? 'amber' : '';
     }
 
-    let statusBadge = over ? `<span class="badge b-over">Over Budget</span>`
-      : p.status==='Done'        ? `<span class="badge b-done">Done</span>`
+    let statusBadge = p.status==='Done'        ? `<span class="badge b-done">Done</span>`
       : p.status==='In Progress' ? `<span class="badge b-inprog">In Progress</span>`
       : p.status==='Waiting'     ? `<span class="badge b-waiting">Waiting</span>`
       : `<span class="badge b-todo">To Do</span>`;
@@ -681,6 +681,10 @@ function buildCardElement(p) {
       : pace==='behind'  ? `<span class="badge b-behind">Behind</span>`
       : pace==='waiting' ? `<span class="badge b-waiting">⏳ Waiting</span>`
       : '';
+
+    // Over-budget is a separate flag from status, shown as its own row
+    // rather than replacing the status badge.
+    const overBudgetRow = over ? `<span class="badge b-over">⚠ Over Budget</span>` : '';
 
     let payBadge = p.payment==='Purchase Order Received'
       ? `<span class="badge b-po">PO Received</span>`
@@ -717,6 +721,7 @@ function buildCardElement(p) {
             ${statusBadge}${paceBadge}${archivedBadge}
           </div>
           <div class="cs-sub">${p.team_member||'—'}${p.pi?` · ${p.pi}`:''}${p.waiting_for?` · ⏳ ${p.waiting_for}`:''}</div>
+          ${overBudgetRow ? `<div class="cs-over-row">${overBudgetRow}</div>` : ''}
         </div>
         <div class="cs-bar-wrap">
           <div class="cs-mini-bar-track${over?' over':''}">
@@ -734,6 +739,7 @@ function buildCardElement(p) {
             <div class="ppi">${p.pi||''}</div>
             ${p.team_member ? `<div class="ppi">${p.team_member}</div>` : ''}
             <div class="meta-row" style="margin-top:8px;">${statusBadge}${paceBadge}</div>
+            ${overBudgetRow ? `<div class="meta-row">${overBudgetRow}</div>` : ''}
             <div class="meta-row">${payBadge}${archivedBadge}</div>
             ${p.quote_no ? `<div class="ppi">📄 Quote ${p.quote_no}</div>` : ''}
             ${p.waiting_for ? `<div style="margin-top:6px;font-size:11px;color:#6d28d9;background:#f5f3ff;border-radius:5px;padding:4px 8px;">⏳ ${p.waiting_for}</div>` : ''}
