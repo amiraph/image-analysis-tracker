@@ -149,6 +149,44 @@ main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; fle
 .btn-cancel { background: #f1f5f9; color: var(--text); } .btn-cancel:hover { background: #e2e8f0; }
 .btn-save   { background: var(--accent); color: #fff; }  .btn-save:hover { background: #4338ca; }
 .btn-delete { background: #fee2e2; color: var(--red); }  .btn-delete:hover { background: #fecaca; }
+
+/* ── Toolbar / filters ── */
+.toolbar { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 10px 16px; }
+.filter-group { display: flex; align-items: center; gap: 8px; }
+.filter-group label { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.filter-group select { border: 1.5px solid var(--border); border-radius: 7px; padding: 6px 10px; font-size: 12.5px; font-family: inherit; background: #fafbfc; }
+.filter-group select:focus { outline: none; border-color: var(--accent); }
+.archive-toggle { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); margin-left: auto; cursor: pointer; }
+.archive-toggle input { cursor: pointer; }
+
+/* ── Compact card grid ── */
+.cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 10px; }
+.empty-note { grid-column: 1 / -1; padding: 30px; text-align: center; color: var(--muted); font-size: 13px; }
+
+/* ── Compact card summary (collapsed state) ── */
+.card-summary { display: flex; align-items: center; gap: 16px; padding: 12px 20px; cursor: pointer; }
+.card-summary:hover { background: #fafbff; }
+.cs-chevron { flex: 0 0 10px; color: var(--muted); font-size: 12px; transition: transform .15s ease; }
+.project-card.expanded .cs-chevron { transform: rotate(90deg); }
+.cs-main { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.cs-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.cs-name { font-size: 13.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
+.cs-sub { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-bar-wrap { flex: 0 0 150px; }
+.cs-mini-bar-track { position: relative; height: 12px; border-radius: 6px; background: var(--green-light); border: 1px solid #bbf7d0; overflow: hidden; }
+.cs-mini-bar-track.over { background: #fee2e2; border-color: #fca5a5; }
+.cs-mini-bar-fill { height: 100%; background: linear-gradient(90deg, #15803d, #22c55e); }
+.cs-mini-bar-fill.over-fill { background: linear-gradient(90deg, #ef4444, #b91c1c); }
+.cs-mini-label { font-size: 10px; color: var(--muted); margin-top: 3px; white-space: nowrap; }
+.cs-deadline { flex: 0 0 84px; font-size: 11.5px; font-weight: 700; text-align: right; color: var(--muted); }
+.cs-deadline.red { color: var(--red); } .cs-deadline.amber { color: var(--amber); }
+
+/* ── Expandable details ── */
+.card-details { display: none; border-top: 1px solid var(--border); }
+.project-card.expanded .card-details { display: block; }
+.project-card.expanded { grid-column: 1 / -1; }
+.project-card.is-archived .card-summary { opacity: .65; }
+.b-archived { background: #f1f5f9; color: #475569; border: 1px solid #cbd5e1; }
 </style>
 </head>
 <body>
@@ -171,8 +209,30 @@ main { padding: 20px 32px; max-width: 1400px; margin: 0 auto; display: flex; fle
     </div>
   </header>
   <div class="summary-bar" id="summary-bar"></div>
-  <main id="main-cards">
+  <main>
+    <div class="toolbar">
+      <div class="filter-group">
+        <label>Status</label>
+        <select id="filter-status" onchange="filterStatus=this.value; render();">
+          <option value="all">All Statuses</option>
+          <option>To Do</option><option>In Progress</option><option>Waiting</option><option>Done</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label>Team Member</label>
+        <select id="filter-team-member" onchange="filterTeamMember=this.value; render();">
+          <option value="all">All Team Members</option>
+        </select>
+      </div>
+      <label class="archive-toggle">
+        <input type="checkbox" id="filter-archived" onchange="showArchived=this.checked; render();"/>
+        Show archived <span id="archived-count-badge"></span>
+      </label>
+    </div>
     <div class="sec">Projects</div>
+    <div class="cards-grid" id="main-cards"></div>
+    <div class="sec" id="archived-sec" style="display:none;">Archived</div>
+    <div class="cards-grid" id="archived-cards" style="display:none;"></div>
   </main>
 </div>
 
@@ -224,6 +284,12 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY, {
 
 let projects = [];
 let editingId = null;
+
+// ── Filter / sort state ──
+let filterStatus = 'all';
+let filterTeamMember = 'all';
+let showArchived = false;
+const STATUS_ORDER = { 'To Do': 0, 'In Progress': 1, 'Waiting': 2, 'Done': 3 };
 
 // ── Init ──
 async function init() {
@@ -479,33 +545,79 @@ function weeklyBarsHTML(p) {
   </div>`;
 }
 
-// ── Render ──
-function render() { renderSummary(); renderCards(); }
+// ── Filtering / sorting ──
+function applyFilters(list) {
+  let out = list;
+  if (filterStatus !== 'all') out = out.filter(p => p.status === filterStatus);
+  if (filterTeamMember !== 'all') out = out.filter(p => (p.team_member || '') === filterTeamMember);
+  // Sort by status (stable sort preserves original created_at order within a group)
+  return [...out].sort((a, b) => (STATUS_ORDER[a.status] ?? 99) - (STATUS_ORDER[b.status] ?? 99));
+}
 
-function renderSummary() {
-  const total    = projects.length;
-  const done     = projects.filter(p => p.status === 'Done').length;
-  const waiting  = projects.filter(p => p.status === 'Waiting').length;
-  const over     = projects.filter(p => isOver(p)).length;
-  const totBudget = projects.reduce((s,p) => s + p.budget_hrs, 0);
-  const totLogged = projects.reduce((s,p) => s + loggedHrs(p), 0);
-  const behind   = projects.filter(p => paceStatus(p) === 'behind').length;
+function populateTeamMemberOptions() {
+  const sel = document.getElementById('filter-team-member');
+  const current = filterTeamMember;
+  const members = [...new Set(projects.map(p => p.team_member).filter(Boolean))].sort();
+  sel.innerHTML = `<option value="all">All Team Members</option>` +
+    members.map(m => `<option value="${m}">${m}</option>`).join('');
+  if (members.includes(current)) { sel.value = current; }
+  else { sel.value = 'all'; filterTeamMember = 'all'; }
+}
+
+// ── Render ──
+function render() {
+  populateTeamMemberOptions();
+
+  const activeAll   = projects.filter(p => !p.archived);
+  const archivedAll = projects.filter(p => p.archived);
+  const visibleActive   = applyFilters(activeAll);
+  const visibleArchived = applyFilters(archivedAll);
+
+  renderSummary(visibleActive);
+  renderCardsInto('main-cards', visibleActive);
+
+  document.getElementById('archived-sec').style.display   = showArchived ? '' : 'none';
+  document.getElementById('archived-cards').style.display = showArchived ? '' : 'none';
+  if (showArchived) renderCardsInto('archived-cards', visibleArchived);
+
+  const badge = document.getElementById('archived-count-badge');
+  if (badge) badge.textContent = archivedAll.length ? `(${archivedAll.length})` : '';
+}
+
+function renderSummary(list) {
+  const total    = list.length;
+  const done     = list.filter(p => p.status === 'Done').length;
+  const waiting  = list.filter(p => p.status === 'Waiting').length;
+  const over     = list.filter(p => isOver(p)).length;
+  const totBudget = list.reduce((s,p) => s + p.budget_hrs, 0);
+  const totLogged = list.reduce((s,p) => s + loggedHrs(p), 0);
+  const behind   = list.filter(p => paceStatus(p) === 'behind').length;
 
   document.getElementById('summary-bar').innerHTML = `
     <div class="sitem"><div class="lbl">Projects</div><div class="val">${total}</div><div class="sub">${done} done · ${total-done} active</div></div>
     <div class="sitem"><div class="lbl">Total Budget</div><div class="val">${totBudget}h</div></div>
-    <div class="sitem"><div class="lbl">Hours Logged</div><div class="val">${totLogged.toFixed(1)}h</div><div class="sub">${Math.round(totLogged/totBudget*100)}% of budget</div></div>
+    <div class="sitem"><div class="lbl">Hours Logged</div><div class="val">${totLogged.toFixed(1)}h</div><div class="sub">${totBudget ? Math.round(totLogged/totBudget*100) : 0}% of budget</div></div>
     ${waiting ? `<div class="sitem"><div class="lbl">⏳ Waiting</div><div class="val" style="color:#6d28d9;">${waiting}</div><div class="sub">paused</div></div>` : ''}
     ${behind  ? `<div class="sitem warn"><div class="lbl">⚠ Behind Pace</div><div class="val">${behind}</div></div>` : ''}
     ${over    ? `<div class="sitem warn"><div class="lbl">⚠ Over Budget</div><div class="val">${over}</div></div>` : ''}
   `;
 }
 
-function renderCards() {
-  const main = document.getElementById('main-cards');
-  main.querySelectorAll('.project-card').forEach(el => el.remove());
+function renderCardsInto(containerId, list) {
+  const container = document.getElementById(containerId);
+  container.innerHTML = '';
+  if (list.length === 0) {
+    container.innerHTML = `<div class="empty-note">No projects match the current filters.</div>`;
+    return;
+  }
+  list.forEach(p => container.appendChild(buildCardElement(p)));
+}
 
-  projects.forEach(p => {
+function toggleExpand(id) {
+  document.getElementById(`card-${id}`)?.classList.toggle('expanded');
+}
+
+function buildCardElement(p) {
     const lg   = loggedHrs(p);
     const over = isOver(p);
     const pct  = Math.min(lg / p.budget_hrs, 1) * 100;
@@ -548,6 +660,8 @@ function renderCards() {
       ? `<span class="badge b-po">PO Received</span>`
       : `<span class="badge b-na">${p.payment}</span>`;
 
+    const archivedBadge = p.archived ? `<span class="badge b-archived">🗄 Archived</span>` : '';
+
     const logRows = [...(p.logs||[])].sort((a,b) => b.log_date.localeCompare(a.log_date)).map(l => {
       const cum    = (p.logs||[]).filter(x => x.log_date <= l.log_date).reduce((s,x) => s+(x.hours||0), 0);
       const cumPct = Math.min(cum / p.budget_hrs, 1) * 100;
@@ -561,69 +675,88 @@ function renderCards() {
     }).join('');
 
     const card = document.createElement('div');
-    card.className = `project-card${over?' over-budget':''}`;
+    card.className = `project-card${over?' over-budget':''}${p.archived?' is-archived':''}`;
     card.id = `card-${p.id}`;
     card.innerHTML = `
-      <div class="card-main">
-        <div class="card-identity">
-          <div class="pname">${p.name}</div>
-          <div class="pteam">${p.team||''}</div>
-          <div class="ppi">${p.pi||''}</div>
-          ${p.team_member ? `<div class="ppi">${p.team_member}</div>` : ''}
-          <div class="meta-row" style="margin-top:8px;">${statusBadge}${paceBadge}</div>
-          <div class="meta-row">${payBadge}</div>
-          ${p.waiting_for ? `<div style="margin-top:6px;font-size:11px;color:#6d28d9;background:#f5f3ff;border-radius:5px;padding:4px 8px;">⏳ ${p.waiting_for}</div>` : ''}
-        </div>
-        <div class="card-visual">
-          <div>
-            <div class="hours-bar-labels">
-              <span class="hl${over?' over':lg===p.budget_hrs?' done-lbl':''}">${lg.toFixed(1)}h logged</span>
-              <span>${p.budget_hrs}h budget</span>
-            </div>
-            <div class="bar-track${over?' over':''}">
-              <div class="bar-fill${over||pct>=100?' full-fill':''}" style="width:${greenBarPct}%;">
-                ${greenBarPct>12?`<span class="bar-fill-pct">${over?Math.round(p.budget_hrs/lg*100):Math.round(pct)}%</span>`:''}
-              </div>
-              ${over?`<div class="bar-overflow-seg" style="width:${redBarPct}%;">+${(lg-p.budget_hrs).toFixed(1)}h</div>`:''}
-              <div class="bar-ticks">${ticks}</div>
-            </div>
-            <div class="bar-sub">
-              <span>0h</span>
-              <span style="color:${over?'var(--red)':'var(--muted)'};">${over?lg.toFixed(1)+'h total':remaining+'h remaining'}</span>
-              <span>${p.budget_hrs}h</span>
-            </div>
+      <div class="card-summary" onclick="toggleExpand('${p.id}')">
+        <span class="cs-chevron">▸</span>
+        <div class="cs-main">
+          <div class="cs-top">
+            <span class="cs-name">${p.name}</span>
+            ${statusBadge}${paceBadge}${archivedBadge}
           </div>
-          ${weeklyBarsHTML(p)}
-          ${lifespanBarHTML(p)}
+          <div class="cs-sub">${p.team_member||'—'}${p.pi?` · ${p.pi}`:''}${p.waiting_for?` · ⏳ ${p.waiting_for}`:''}</div>
         </div>
-        <div class="card-stats">
-          <div class="stat"><span class="s-lbl">Logged</span><span class="s-val ${over?'red':''}">${lg.toFixed(1)} / ${p.budget_hrs}h</span></div>
-          <div class="stat"><span class="s-lbl">Remaining</span><span class="s-val ${over?'red':''}">${over?'−'+(lg-p.budget_hrs).toFixed(1)+'h':remaining+'h'}</span></div>
-          <div class="stat"><span class="s-lbl">Deadline</span><span class="s-val ${daysLeftClass}">${daysLeftStr}</span></div>
-          <div class="stat"><span class="s-lbl">Waiting days</span><span class="s-val" style="color:#6d28d9;">${Math.round(totalWaitingDays(p))||'—'}</span></div>
-          <div class="stat"><span class="s-lbl">Log entries</span><span class="s-val">${(p.logs||[]).length}</span></div>
+        <div class="cs-bar-wrap">
+          <div class="cs-mini-bar-track${over?' over':''}">
+            <div class="cs-mini-bar-fill${over?' over-fill':''}" style="width:${Math.min(pct,100)}%;"></div>
+          </div>
+          <div class="cs-mini-label">${lg.toFixed(1)} / ${p.budget_hrs}h${over?' ⚠':''}</div>
         </div>
+        <div class="cs-deadline ${daysLeftClass}">${daysLeftStr}</div>
       </div>
-      <div class="card-actions">
-        <button class="log-toggle-btn" id="log-btn-${p.id}" onclick="toggleLog('${p.id}')">＋ Log Hours <span style="font-size:11px;color:var(--muted);">(${(p.logs||[]).length} entries)</span></button>
-        <button class="edit-btn" onclick="openEditModal('${p.id}')">✎ Edit</button>
-        <span class="saving-indicator" id="saving-${p.id}">Saving…</span>
-      </div>
-      <div class="log-panel" id="log-panel-${p.id}">
-        <table class="log-table">
-          <thead><tr><th>Date</th><th>Hours</th><th>Note</th><th>Cumulative Progress</th><th></th></tr></thead>
-          <tbody>${logRows||`<tr><td colspan="5" style="color:var(--muted);font-size:12px;font-style:italic;padding:8px 10px;">No hours logged yet.</td></tr>`}</tbody>
-        </table>
-        <div class="add-log-row">
-          <label>Date<input type="text" id="li-date-${p.id}" value="${todayDDMMYYYY()}" placeholder="DD/MM/YYYY" maxlength="10" oninput="autoFmtDate(this)" style="width:120px;"/></label>
-          <label>Hours<input type="number" id="li-hrs-${p.id}" min="0.5" step="0.5" placeholder="4"/></label>
-          <label>Note (optional)<input type="text" id="li-note-${p.id}" placeholder="What was done this week?"/></label>
-          <button class="add-log-submit" onclick="addLog('${p.id}')">Log Hours</button>
+      <div class="card-details">
+        <div class="card-main">
+          <div class="card-identity">
+            <div class="pname">${p.name}</div>
+            <div class="pteam">${p.team||''}</div>
+            <div class="ppi">${p.pi||''}</div>
+            ${p.team_member ? `<div class="ppi">${p.team_member}</div>` : ''}
+            <div class="meta-row" style="margin-top:8px;">${statusBadge}${paceBadge}</div>
+            <div class="meta-row">${payBadge}${archivedBadge}</div>
+            ${p.waiting_for ? `<div style="margin-top:6px;font-size:11px;color:#6d28d9;background:#f5f3ff;border-radius:5px;padding:4px 8px;">⏳ ${p.waiting_for}</div>` : ''}
+          </div>
+          <div class="card-visual">
+            <div>
+              <div class="hours-bar-labels">
+                <span class="hl${over?' over':lg===p.budget_hrs?' done-lbl':''}">${lg.toFixed(1)}h logged</span>
+                <span>${p.budget_hrs}h budget</span>
+              </div>
+              <div class="bar-track${over?' over':''}">
+                <div class="bar-fill${over||pct>=100?' full-fill':''}" style="width:${greenBarPct}%;">
+                  ${greenBarPct>12?`<span class="bar-fill-pct">${over?Math.round(p.budget_hrs/lg*100):Math.round(pct)}%</span>`:''}
+                </div>
+                ${over?`<div class="bar-overflow-seg" style="width:${redBarPct}%;">+${(lg-p.budget_hrs).toFixed(1)}h</div>`:''}
+                <div class="bar-ticks">${ticks}</div>
+              </div>
+              <div class="bar-sub">
+                <span>0h</span>
+                <span style="color:${over?'var(--red)':'var(--muted)'};">${over?lg.toFixed(1)+'h total':remaining+'h remaining'}</span>
+                <span>${p.budget_hrs}h</span>
+              </div>
+            </div>
+            ${weeklyBarsHTML(p)}
+            ${lifespanBarHTML(p)}
+          </div>
+          <div class="card-stats">
+            <div class="stat"><span class="s-lbl">Logged</span><span class="s-val ${over?'red':''}">${lg.toFixed(1)} / ${p.budget_hrs}h</span></div>
+            <div class="stat"><span class="s-lbl">Remaining</span><span class="s-val ${over?'red':''}">${over?'−'+(lg-p.budget_hrs).toFixed(1)+'h':remaining+'h'}</span></div>
+            <div class="stat"><span class="s-lbl">Deadline</span><span class="s-val ${daysLeftClass}">${daysLeftStr}</span></div>
+            <div class="stat"><span class="s-lbl">Waiting days</span><span class="s-val" style="color:#6d28d9;">${Math.round(totalWaitingDays(p))||'—'}</span></div>
+            <div class="stat"><span class="s-lbl">Log entries</span><span class="s-val">${(p.logs||[]).length}</span></div>
+          </div>
+        </div>
+        <div class="card-actions">
+          <button class="log-toggle-btn" id="log-btn-${p.id}" onclick="toggleLog('${p.id}')">＋ Log Hours <span style="font-size:11px;color:var(--muted);">(${(p.logs||[]).length} entries)</span></button>
+          <button class="edit-btn" onclick="openEditModal('${p.id}')">✎ Edit</button>
+          <button class="edit-btn" onclick="setArchived('${p.id}', ${p.archived ? 'false' : 'true'})">${p.archived ? '↩ Unarchive' : '🗄 Archive'}</button>
+          <span class="saving-indicator" id="saving-${p.id}">Saving…</span>
+        </div>
+        <div class="log-panel" id="log-panel-${p.id}">
+          <table class="log-table">
+            <thead><tr><th>Date</th><th>Hours</th><th>Note</th><th>Cumulative Progress</th><th></th></tr></thead>
+            <tbody>${logRows||`<tr><td colspan="5" style="color:var(--muted);font-size:12px;font-style:italic;padding:8px 10px;">No hours logged yet.</td></tr>`}</tbody>
+          </table>
+          <div class="add-log-row">
+            <label>Date<input type="text" id="li-date-${p.id}" value="${todayDDMMYYYY()}" placeholder="DD/MM/YYYY" maxlength="10" oninput="autoFmtDate(this)" style="width:120px;"/></label>
+            <label>Hours<input type="number" id="li-hrs-${p.id}" min="0.5" step="0.5" placeholder="4"/></label>
+            <label>Note (optional)<input type="text" id="li-note-${p.id}" placeholder="What was done this week?"/></label>
+            <button class="add-log-submit" onclick="addLog('${p.id}')">Log Hours</button>
+          </div>
         </div>
       </div>
     `;
-    main.appendChild(card);
-  });
+    return card;
 }
 
 // ── UI helpers ──
@@ -652,6 +785,7 @@ async function addLog(id) {
   }
   await loadData(); render();
   requestAnimationFrame(() => {
+    document.getElementById(`card-${id}`)?.classList.add('expanded');
     document.getElementById(`log-panel-${id}`)?.classList.add('open');
     document.getElementById(`log-btn-${id}`)?.classList.add('active');
   });
@@ -663,9 +797,17 @@ async function deleteLog(pid, lid) {
   if (error) { alert('Error: ' + error.message); return; }
   await loadData(); render();
   requestAnimationFrame(() => {
+    document.getElementById(`card-${pid}`)?.classList.add('expanded');
     document.getElementById(`log-panel-${pid}`)?.classList.add('open');
     document.getElementById(`log-btn-${pid}`)?.classList.add('active');
   });
+}
+
+// ── Archive / unarchive ──
+async function setArchived(id, val) {
+  const { error } = await db.from('projects').update({ archived: val }).eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  await loadData(); render();
 }
 
 function toggleWaitingField() {
